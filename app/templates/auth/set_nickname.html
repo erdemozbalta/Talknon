@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Takma Ad Belirleyin') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-brand">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Talknon Logo" class="auth-brand-img">
+        <div class="auth-logo">Talknon</div>
+        <p class="auth-subtitle">{{ t('Anonim Dünyaya Hoş Geldiniz!') }}</p>
+    </div>
+
+    <div class="auth-card" style="backdrop-filter: blur(25px); -webkit-backdrop-filter: blur(25px); border: 1px solid rgba(108, 99, 255, 0.3); border-radius: 28px; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.45);">
+        <div style="text-align: center; margin-bottom: 20px;">
+            <div style="width: 64px; height: 64px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 22px; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto; box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);">
+                <i data-lucide="user-check" style="width: 32px; height: 32px; color: white;"></i>
+            </div>
+            <h2 style="font-size: 1.35rem; font-weight: 800; color: #ffffff; margin-bottom: 6px;">{{ t('İlk Takma Adınızı Belirleyin') }}</h2>
+            <p style="font-size: 0.84rem; color: var(--text-secondary); line-height: 1.45; margin: 0;">
+                {{ t('Talknon kafelerindeki anonim sohbet odalarında diğer kullanıcılar bu takma adınızı görecektir.') }}
+            </p>
+        </div>
+
+        <form method="POST" action="{{ url_for('auth.set_nickname') }}" id="setNicknameForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" for="nickname_input" style="font-weight: 700;">{{ t('Takma Adınız (Nickname) *') }}</label>
+                <div style="position: relative;">
+                    <span style="position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-weight: 800; color: var(--primary-light);">@</span>
+                    <input type="text" name="nickname" id="nickname_input" class="form-input"
+                           style="padding-left: 34px; font-weight: 700; border-radius: 16px;"
+                           minlength="2" maxlength="30" required>
+                </div>
+
+                <div style="display: flex; justify-content: center; margin-top: 10px; margin-bottom: 10px;">
+                    <button type="button" class="btn btn-ghost btn-sm" onclick="generateRandomNick()" style="font-size: 0.78rem; color: #a78bfa; font-weight: 600;">
+                        <i data-lucide="sparkles" style="width: 14px; height: 14px; display: inline-block; vertical-align: middle;"></i> {{ t('Rastgele Oluştur') }}
+                    </button>
+                </div>
+            </div>
+
+            <div style="font-size: 0.76rem; color: #94a3b8; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.08); padding: 10px 14px; border-radius: 16px; margin-bottom: 20px; line-height: 1.4; text-align: center;">
+                {{ t('Takma adınızı daha sonra profilinizden haftada 1 defa değiştirebilirsiniz.') }}
+            </div>
+
+            <button type="submit" class="btn btn-accent btn-block btn-lg" style="border-radius: 20px; font-weight: 800; font-size: 1rem; box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4);">
+                {{ t('Devam Et & Başla') }}
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    const sampleNicks = ['GeceKusu', 'KahveTutkunu', 'SessizKedi', 'MaviRuzgar', 'KutupYildizi', 'GumusBulut', 'DenizFeneri', 'AkilliTilki', 'GizemliGezgin', 'TatliPenguen'];
+
+    function generateRandomNick() {
+        const randName = sampleNicks[Math.floor(Math.random() * sampleNicks.length)];
+        const randNum = Math.floor(Math.random() * 90) + 10;
+        document.getElementById('nickname_input').value = randName + randNum;
+    }
+
+</script>
+{% endblock %}

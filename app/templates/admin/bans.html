@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Güvenlik Merkezi') }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">{{ t('Güvenlik Merkezi') }}</h1>
+    </div>
+
+    <div class="ban-dashboard-header">
+        <div>
+            <h2 style="font-size: 1.15rem; color: #ffffff; margin: 0; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="shield-alert" style="width: 22px; height: 22px; color: #f43f5e;"></i>
+                {{ t('Güvenlik Merkezi') }}
+            </h2>
+            <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 4px; margin-bottom: 0;">
+                {{ t('Platform ve kafelerde aktif olarak uygulanan tüm erişim kısıtlamalarını yönetin.') }}
+            </p>
+        </div>
+
+        <div class="ban-stats-grid">
+            <div class="ban-stat-card" onclick="setCategoryFilter('all', document.querySelector('.filter-chip[data-cat=all]'))" style="cursor: pointer;">
+                <div class="ban-stat-icon" style="background: rgba(244, 63, 94, 0.15); color: #f43f5e;">
+                    <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="ban-stat-info">
+                    <div class="ban-stat-value" style="color: #f43f5e;">{{ total_active }}</div>
+                    <div class="ban-stat-label">{{ t('Aktif Yasaklı') }}</div>
+                </div>
+            </div>
+
+            <div class="ban-stat-card" onclick="setCategoryFilter('temp', document.querySelector('.filter-chip[data-cat=temp]'))" style="cursor: pointer;">
+                <div class="ban-stat-icon" style="background: rgba(245, 158, 11, 0.15); color: #f59e0b;">
+                    <i data-lucide="clock" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="ban-stat-info">
+                    <div class="ban-stat-value" style="color: #f59e0b;">{{ temp_count }}</div>
+                    <div class="ban-stat-label">{{ t('Süreli Yasak') }}</div>
+                </div>
+            </div>
+
+            <div class="ban-stat-card" onclick="setCategoryFilter('perm', document.querySelector('.filter-chip[data-cat=perm]'))" style="cursor: pointer;">
+                <div class="ban-stat-icon" style="background: rgba(225, 29, 72, 0.2); color: #fb7185;">
+                    <i data-lucide="slash" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="ban-stat-info">
+                    <div class="ban-stat-value" style="color: #fb7185;">{{ perm_count }}</div>
+                    <div class="ban-stat-label">{{ t('Kalıcı Ban') }}</div>
+                </div>
+            </div>
+
+            <div class="ban-stat-card" onclick="setCategoryFilter('revoked', document.querySelector('.filter-chip[data-cat=revoked]'))" style="cursor: pointer;">
+                <div class="ban-stat-icon" style="background: rgba(16, 185, 129, 0.15); color: #10b981;">
+                    <i data-lucide="check-circle-2" style="width: 18px; height: 18px;"></i>
+                </div>
+                <div class="ban-stat-info">
+                    <div class="ban-stat-value" style="color: #10b981;">{{ revoked_count }}</div>
+                    <div class="ban-stat-label">{{ t('Kaldırılan Ban') }}</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="ban-controls">
+        <div class="ban-filter-chips">
+            <button type="button" class="filter-chip active" data-cat="all" onclick="setCategoryFilter('all', this)">{{ t('Tümü') }}</button>
+            <button type="button" class="filter-chip" data-cat="temp" onclick="setCategoryFilter('temp', this)">{{ t('Süreli') }}</button>
+            <button type="button" class="filter-chip" data-cat="perm" onclick="setCategoryFilter('perm', this)">{{ t('Kalıcı') }}</button>
+            <button type="button" class="filter-chip" data-cat="revoked" onclick="setCategoryFilter('revoked', this)">{{ t('Kaldırılan') }}</button>
+        </div>
+
+        <button type="button" class="btn-search-trigger" onclick="toggleSearchInput()" title="{{ t('Arama Yap') }}">
+            <i data-lucide="search" style="width: 18px; height: 18px;"></i>
+        </button>
+    </div>
+
+    <div id="expandableSearchContainer" style="display: none; margin-bottom: 14px; transition: all 0.25s ease;">
+        <div style="position: relative; width: 100%;">
+            <input type="text" id="banSearchInput" class="form-input" placeholder="{{ t('İsim, telefon, kafe veya sebep ara...') }}" oninput="filterBanCards()" style="border-radius: 14px; padding-left: 38px; padding-right: 36px; background: rgba(18, 18, 28, 0.95); border: 1px solid var(--primary-light);">
+            <i data-lucide="search" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 18px; height: 18px; color: var(--primary-light);"></i>
+            <button type="button" onclick="toggleSearchInput()" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px;">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+    </div>
+
+    <div id="banCardsContainer">
+        {% if bans %}
+            {% for ban in bans %}
+            {% set user_obj = ban.banned_user %}
+            {% set is_active = ban.is_active %}
+            {% set is_perm = (ban.ban_type == 'permanent') %}
+            {% set card_type = 'revoked' if not is_active else ('perm' if is_perm else 'temp') %}
+            {% set icon_name = 'user-check' if not is_active else 'user-x' %}
+
+            <div class="ban-item-card {% if not is_active %}is-revoked{% endif %}"
+                 data-type="{{ card_type }}"
+                 data-search="{{ (user_obj.display_name if user_obj else '') ~ ' ' ~ (user_obj.display_phone if user_obj else '') ~ ' ' ~ (ban.cafe.name if ban.cafe else 'Tüm Platform') ~ ' ' ~ (ban.reason or '') }}">
+
+                <div class="ban-user-info">
+                    <div class="ban-user-header">
+                        <div class="ban-icon-box" style="overflow: hidden;">
+                            {% if user_obj and user_obj.profile_photo %}
+                            <img src="{{ url_for('static', filename=user_obj.profile_photo) }}" alt="Profil" style="width: 100%; height: 100%; object-fit: cover;">
+                            {% else %}
+                            <i data-lucide="{{ icon_name }}" class="ban-icon-svg" style="width: 20px; height: 20px;"></i>
+                            {% endif %}
+                        </div>
+                        <div class="ban-user-details">
+                            <div class="ban-user-title">
+                                <span class="user-name">
+                                    {{ user_obj.display_name if user_obj else ('Kullanıcı #' ~ ban.user_id) }}
+                                </span>
+                                {% if user_obj and user_obj.display_phone != 'Anonim Kullanıcı' %}
+                                <span class="user-phone">
+                                    <i data-lucide="phone" style="width: 11px; height: 11px;"></i>
+                                    {{ user_obj.display_phone }}
+                                </span>
+                                {% endif %}
+                            </div>
+
+                            <div class="ban-badges">
+                                {% if is_active %}
+                                    {% if is_perm %}
+                                    <span class="ban-status-badge badge-perm">
+                                        <i data-lucide="slash" style="width: 11px; height: 11px;"></i>
+                                        <span>{{ t('Kalıcı Ban') }}</span>
+                                    </span>
+                                    {% else %}
+                                    <span class="ban-status-badge badge-temp">
+                                        <i data-lucide="clock" style="width: 11px; height: 11px;"></i>
+                                        <span>{{ t('Süreli Ban') }}</span>
+                                    </span>
+                                    {% endif %}
+                                {% else %}
+                                    <span class="ban-status-badge badge-revoked">
+                                        <i data-lucide="check-circle-2" style="width: 11px; height: 11px;"></i>
+                                        <span>{{ t('Ban Kaldırıldı') }}</span>
+                                    </span>
+                                {% endif %}
+
+                                {% if ban.cafe %}
+                                <span class="ban-scope-badge">
+                                    <i data-lucide="map-pin" style="width: 11px; height: 11px;"></i>
+                                    <span>{{ ban.cafe.name }}</span>
+                                </span>
+                                {% else %}
+                                <span class="ban-scope-badge scope-global">
+                                    <i data-lucide="globe" style="width: 11px; height: 11px;"></i>
+                                    <span>{{ t('Tüm Platform') }}</span>
+                                </span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if ban.reason and not ban.reason.startswith('Rapor #') %}
+                    <div class="ban-reason-box">
+                        <span class="reason-label">{{ t('Sebep') }}:</span>
+                        <span class="reason-text">"{{ ban.reason }}"</span>
+                    </div>
+                    {% endif %}
+
+                    <div class="ban-date-info">
+                        <span><i data-lucide="calendar" style="width: 13px; height: 13px; vertical-align: middle;"></i> <strong>{{ t('Tarih') }}:</strong> {{ ban.created_at.strftime('%d.%m.%Y %H:%M') }}</span>
+                        {% if ban.ban_until %}
+                        <span><i data-lucide="clock" style="width: 13px; height: 13px; vertical-align: middle;"></i> <strong>{{ t('Bitiş Tarihi') }}:</strong> {{ ban.ban_until.strftime('%d.%m.%Y %H:%M') }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+
+                {% if is_active %}
+                <div class="ban-action-box">
+                    <form method="POST" action="{{ url_for('admin.unban_user', ban_id=ban.id) }}" style="margin: 0;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn-unban-action">
+                            <i data-lucide="check-circle" style="width: 16px; height: 16px;"></i>
+                            <span>{{ t('Banı Kaldır') }}</span>
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+            </div>
+            {% endfor %}
+        {% endif %}
+
+        <div id="emptyBansCard" class="card text-center {% if bans %}d-none{% endif %}" style="padding: var(--space-xl); border-radius: 20px;">
+            <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(16, 185, 129, 0.1); color: var(--success); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto;">
+                <i data-lucide="shield-check" style="width: 28px; height: 28px;"></i>
+            </div>
+            <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 4px;">{{ t('Ban Kaydı Bulunamadı') }}</h3>
+            <p class="text-muted" style="font-size: 0.85rem;">{{ t('Seçilen filtre kriterlerine uygun hiçbir yasaklama kaydı bulunmamaktadır.') }}</p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    let currentCategory = 'all';
+
+    function toggleSearchInput() {
+        const searchContainer = document.getElementById('expandableSearchContainer');
+        const searchInput = document.getElementById('banSearchInput');
+        if (!searchContainer) return;
+
+        if (searchContainer.style.display === 'none' || !searchContainer.style.display) {
+            searchContainer.style.display = 'block';
+            if (searchInput) searchInput.focus();
+        } else {
+            searchContainer.style.display = 'none';
+            if (searchInput) {
+                searchInput.value = '';
+                filterBanCards();
+            }
+        }
+    }
+
+    function setCategoryFilter(category, btn) {
+        currentCategory = category;
+        document.querySelectorAll('.filter-chip').forEach(c => c.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        filterBanCards();
+    }
+
+    function filterBanCards() {
+        const inputEl = document.getElementById('banSearchInput');
+        const query = inputEl ? inputEl.value.toLowerCase().trim() : '';
+        const cards = document.querySelectorAll('.ban-item-card');
+        let visibleCount = 0;
+
+        cards.forEach(card => {
+            const type = card.getAttribute('data-type');
+            const searchData = (card.getAttribute('data-search') || '').toLowerCase();
+
+            const matchesCategory = (currentCategory === 'all') || (currentCategory === type);
+            const matchesSearch = !query || searchData.includes(query);
+
+            if (matchesCategory && matchesSearch) {
+                card.style.display = 'flex';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+
+        const emptyEl = document.getElementById('emptyBansCard');
+        if (emptyEl) {
+            if (visibleCount === 0) {
+                emptyEl.classList.remove('d-none');
+                emptyEl.style.display = 'block';
+            } else {
+                emptyEl.classList.add('d-none');
+                emptyEl.style.display = 'none';
+            }
+        }
+    }
+
+</script>
+{% endblock %}

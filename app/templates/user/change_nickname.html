@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Takma Ad Değiştir') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('user.profile') }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ t('Takma Ad Değiştir') }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div style="margin-top: var(--space-lg);">
+
+        <div style="background: rgba(22, 25, 42, 0.85); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(108, 99, 255, 0.25); border-radius: 24px; padding: 22px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35);">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <div style="font-weight: 800; font-size: 1.05rem; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="user-check" style="width: 22px; height: 22px; color: #a78bfa;"></i>
+                    <span>{{ t('Anonim Takma Ad (Nickname)') }}</span>
+                </div>
+                {% if can_change_nick %}
+                <span class="badge badge-success" style="border-radius: 99px; font-size: 0.72rem; padding: 4px 10px; font-weight: 700; white-space: nowrap;">{{ t('Değiştirilebilir') }}</span>
+                {% else %}
+                <span class="badge badge-warning" style="border-radius: 99px; font-size: 0.72rem; padding: 4px 10px; font-weight: 700; white-space: nowrap;">{{ t('Kilitli (%s Gün)' % days_rem) }}</span>
+                {% endif %}
+            </div>
+
+            <div style="font-size: 0.82rem; color: #cbd5e1; background: rgba(108, 99, 255, 0.1); border: 1px solid rgba(108, 99, 255, 0.2); padding: 12px 16px; border-radius: 18px; margin-bottom: 18px; line-height: 1.5; display: flex; align-items: flex-start; gap: 12px;">
+                <i data-lucide="info" style="width: 20px; height: 20px; color: #a78bfa; flex-shrink: 0; margin-top: 1px;"></i>
+                <div>
+                    <strong style="color: #ffffff;">{{ t('Takma Ad Bilgilendirmesi:') }}</strong><br>
+                    {{ t('Bu takma ad kafelerdeki anonim sohbet odalarında diğer kullanıcılar tarafından görünen isminizdir.') }}<br>
+                    <span style="color: #ffca28; font-weight: 700;">{{ t('⚠️ Takma adınız güvenlik ve düzen nedeniyle haftada yalnızca 1 defa değiştirilebilir.') }}</span>
+                </div>
+            </div>
+
+            <form method="POST" action="{{ url_for('user.change_nickname') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label class="form-label" style="font-size: 0.85rem; font-weight: 700;">{{ t('Mevcut Takma Adınız') }}</label>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: var(--primary-light); background: rgba(255,255,255,0.04); padding: 10px 14px; border-radius: 14px; margin-bottom: 14px; border: 1px solid rgba(255,255,255,0.08);">
+                        @{{ user.nickname or 'Belirlenmemiş' }}
+                    </div>
+
+                    <label class="form-label" for="nickname_input" style="font-size: 0.85rem; font-weight: 700;">{{ t('Yeni Takma Ad') }}</label>
+                    <input type="text" name="nickname" id="nickname_input" class="form-input"
+                           value="{{ user.nickname or '' }}" placeholder="{{ t('Örn: CoolKedi42') }}"
+                           minlength="2" maxlength="30" {% if not can_change_nick %}disabled style="opacity: 0.6; cursor: not-allowed;"{% endif %} required>
+                </div>
+
+                {% if can_change_nick %}
+                <button type="submit" class="btn btn-accent btn-block btn-lg" style="border-radius: 18px; font-weight: 800; box-shadow: 0 6px 20px rgba(108, 99, 255, 0.35);">
+                    <i data-lucide="refresh-cw" style="width: 18px; height: 18px;"></i> {{ t('Takma Adı Güncelle') }}
+                </button>
+                {% else %}
+                <button type="button" class="btn btn-secondary btn-block btn-lg" disabled style="border-radius: 18px; opacity: 0.65; cursor: not-allowed; font-weight: 700; white-space: normal; line-height: 1.35; padding: 12px 14px; min-height: 48px; font-size: 0.88rem;">
+                    <i data-lucide="lock" style="width: 16px; height: 16px; flex-shrink: 0; display: inline-block; vertical-align: middle;"></i> {{ t('Kilitli (%s Gün Sonra Değiştirilebilir)' % days_rem) }}
+                </button>
+                {% endif %}
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

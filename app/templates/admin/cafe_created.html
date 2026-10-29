@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}Kafe Oluşturuldu — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div style="text-align: center; padding: var(--space-xl) 0;">
+        <i data-lucide="check-circle" style="width: 64px; height: 64px; color: var(--success); margin-bottom: var(--space-md);"></i>
+        <h2 style="margin-bottom: var(--space-sm);">{{ cafe.name }}</h2>
+        <p class="text-secondary">Kafe başarıyla oluşturuldu. Aşağıdaki giriş bilgilerini işletme sahibine iletebilirsiniz.</p>
+    </div>
+
+    <div class="credentials-card">
+        <h3 style="margin-bottom: var(--space-lg);">İşletme Giriş Bilgileri</h3>
+
+        <div class="credential-row">
+            <span class="credential-label">İşletme Kullanıcı Adı / Kodu</span>
+            <span class="credential-value">{{ business_code }}</span>
+        </div>
+
+        <div class="credential-row">
+            <span class="credential-label">İşletme Şifresi</span>
+            <span class="credential-value" style="color: var(--success);">{{ raw_password }}</span>
+        </div>
+
+        <div class="credential-row">
+            <span class="credential-label">Ortak İşletme Giriş Portalı</span>
+            <a href="{{ url_for('auth.business_login', _external=True) }}" target="_blank" class="credential-value" style="font-size: 0.85rem; text-decoration: underline;">
+                {{ url_for('auth.business_login', _external=True) }}
+            </a>
+        </div>
+    </div>
+
+    <div style="display: flex; gap: var(--space-sm); margin-top: var(--space-lg);">
+        <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) }}" class="btn btn-primary" style="flex: 1; text-align: center;">
+            Kafe Detayı
+        </a>
+        <a href="{{ url_for('admin.cafes') }}" class="btn btn-outline" style="flex: 1; text-align: center;">
+            Tüm Kafeler
+        </a>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

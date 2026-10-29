@@ -1,0 +1,54 @@
+{% extends "base.html" %}
+{% block title %}Kafeniz Yayından Kaldırılmıştır — Talknon{% endblock %}
+
+{% block navbar %}
+
+{% endblock %}
+
+{% block content %}
+<div class="page-content" style="min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px;">
+    <div style="background: rgba(18, 20, 32, 0.95); border: 1px solid rgba(239, 68, 68, 0.25); border-radius: 24px; padding: 36px 24px; width: 100%; max-width: 440px; text-align: center; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6); backdrop-filter: blur(20px);">
+
+        <div style="width: 72px; height: 72px; border-radius: 20px; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.3); display: inline-flex; align-items: center; justify-content: center; color: #ef4444; margin-bottom: 20px;">
+            <i data-lucide="shield-alert" style="width: 36px; height: 36px;"></i>
+        </div>
+
+        <h1 style="font-size: 1.35rem; font-weight: 800; color: #ffffff; margin-bottom: 12px; letter-spacing: -0.3px;">
+            {{ t('Kafeniz Yayından Kaldırılmıştır') }}
+        </h1>
+
+        <p style="font-size: 0.88rem; color: var(--text-secondary); line-height: 1.55; margin-bottom: 24px;">
+            {{ t('Kafeniz yönetici tarafından yayından kaldırılmıştır. Sohbet odası ve işletme paneli erişime kapatılmıştır. Lütfen sistem yöneticisi ile görüşünüz.') }}
+        </p>
+
+        {% if cafe %}
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 16px; margin-bottom: 28px; text-align: left;">
+            <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">{{ t('İşletme / Kafe') }}</div>
+            <div style="font-size: 0.95rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; justify-content: space-between;">
+                <span>{{ cafe.name }}</span>
+                <span style="font-size: 0.72rem; background: rgba(239, 68, 68, 0.15); color: #ef4444; border: 1px solid rgba(239, 68, 68, 0.3); padding: 3px 10px; border-radius: 8px; font-weight: 700;">
+                    {{ t('Yayından Kaldırıldı') }}
+                </span>
+            </div>
+        </div>
+        {% endif %}
+
+        <form method="GET" action="{{ url_for('auth.logout') }}">
+            <button type="submit" class="btn btn-block" style="background: #ef4444; color: #ffffff; font-weight: 700; font-size: 0.92rem; padding: 14px; border-radius: 14px; border: none; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; transition: all 0.2s;">
+                <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                <span>{{ t('Çıkış Yap') }}</span>
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    if (typeof lucide !== 'undefined') {
+        lucide.createIcons();
+    }
+
+</script>
+{% endblock %}

@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Engellenen Kullanıcılar') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('user.settings') }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ t('Engellenen Kullanıcılar') }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div style="margin-top: var(--space-lg);">
+        <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: var(--space-md); line-height: 1.45;">
+            {{ t('Engellediğiniz kullanıcılar sizinle anonim odalarda eşleşemez ve özel mesaj gönderemez.') }}
+        </p>
+
+        <div class="settings-group">
+            {% for item in blocked_users %}
+            <div class="settings-item" style="padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; background: rgba(30, 34, 56, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 16px; margin-bottom: 8px;">
+                <div class="settings-item-left" style="display: flex; align-items: center; gap: 12px; min-width: 0;">
+                    <div class="avatar avatar-md" style="flex-shrink: 0; background: linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(244, 63, 94, 0.3)); border: 1.5px solid rgba(239, 68, 68, 0.4); color: #f43f5e; font-weight: 800; font-size: 1rem;">
+                        {{ (item.user.display_name or item.user.first_name or item.user.nickname or 'K')[0]|upper }}
+                    </div>
+                    <div style="min-width: 0;">
+                        <span class="settings-item-label" style="display: block; font-weight: 700; color: #ffffff; font-size: 0.95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                            {{ item.user.display_name }}
+                        </span>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 2px;">
+                            {% if item.user.nickname %}
+                            <span style="font-size: 0.76rem; color: #a78bfa; font-weight: 600;">@{{ item.user.nickname }}</span>
+                            {% endif %}
+                            <span style="font-size: 0.72rem; color: var(--text-muted);">
+                                {{ item.block.created_at.strftime('%d.%m.%Y') }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <button type="button" class="btn btn-sm" onclick="openUnblockModal('{{ item.user.id }}', '{{ item.user.display_name }}')" style="background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.35); color: #10b981; font-weight: 700; font-size: 0.82rem; border-radius: 12px; padding: 7px 14px; display: inline-flex; align-items: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
+                    <i data-lucide="user-check" style="width: 15px; height: 15px;"></i>
+                    <span>{{ t('Engeli Kaldır') }}</span>
+                </button>
+            </div>
+            {% endfor %}
+
+            {% if not blocked_users %}
+            <div class="card text-center" style="padding: 36px 20px; border-radius: 20px; background: rgba(22, 25, 42, 0.6); border: 1px dashed rgba(255, 255, 255, 0.12);">
+                <div style="width: 60px; height: 60px; border-radius: 18px; background: rgba(16, 185, 129, 0.12); border: 1px solid rgba(16, 185, 129, 0.25); color: #10b981; display: flex; align-items: center; justify-content: center; margin: 0 auto 14px auto;">
+                    <i data-lucide="shield-check" style="width: 30px; height: 30px;"></i>
+                </div>
+                <h3 style="font-size: 1.1rem; color: #ffffff; margin-bottom: 6px; font-weight: 800;">{{ t('Engellenen kullanıcı yok') }}</h3>
+                <p class="text-muted" style="font-size: 0.85rem; max-width: 300px; margin: 0 auto; line-height: 1.5;">
+                    {{ t('Engellediğiniz kullanıcılar burada listelenir ve istediğiniz zaman engellerini kaldırabilirsiniz.') }}
+                </p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="action-modal-overlay" id="unblockConfirmModal">
+    <div class="action-modal-card" style="max-width: 320px; padding: 22px 20px; border-radius: 20px; text-align: center;">
+        <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(16, 185, 129, 0.15); border: 1px solid rgba(16, 185, 129, 0.3); color: #10b981; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <i data-lucide="user-check" style="width: 26px; height: 26px;"></i>
+        </div>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
+            {{ t('Engeli Kaldır') }}
+        </h3>
+
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 20px;">
+            <strong id="unblockTargetName" style="color: #ffffff;">Kullanıcı</strong> {{ t('adlı kullanıcının engelini kaldırmak istediğinize emin misiniz?') }}
+        </p>
+
+        <form method="POST" id="unblockActionForm" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="closeUnblockModal()" style="flex: 1; border-radius: 12px; padding: 10px; font-weight: 700; font-size: 0.84rem;">
+                    {{ t('İptal') }}
+                </button>
+                <button type="submit" class="btn" style="flex: 1; border-radius: 12px; background: linear-gradient(135deg, #059669, #10b981); color: #ffffff; border: none; padding: 10px; font-weight: 700; font-size: 0.84rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 15px rgba(16, 185, 129, 0.35);">
+                    <i data-lucide="check" style="width: 14px; height: 14px;"></i>
+                    {{ t('Evet, Kaldır') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    function openUnblockModal(userId, userName) {
+        document.getElementById('unblockTargetName').textContent = userName || 'Kullanıcı';
+        document.getElementById('unblockActionForm').action = '/profile/unblock/' + userId;
+        document.getElementById('unblockConfirmModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeUnblockModal() {
+        document.getElementById('unblockConfirmModal').classList.remove('active');
+    }
+
+    document.querySelectorAll('.action-modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+
+</script>
+{% endblock %}

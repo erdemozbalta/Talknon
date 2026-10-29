@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+{% block title %}Yönetim Paneli — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content admin-dashboard-container">
+
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">Admin Yönetim Paneli</h1>
+    </div>
+
+    <div class="admin-header-bar">
+        <div style="min-width: 0;">
+            <h2 style="font-size: 1.05rem; font-weight: 700; margin: 0; color: #ffffff;">Genel Bakış</h2>
+            <span class="text-muted" style="font-size: 0.75rem;">Canlı sistem performans verileri</span>
+        </div>
+        <div class="status-online-tag">
+            <div class="status-dot-green"></div>
+            <span>Sistem Aktif</span>
+        </div>
+    </div>
+
+    <div class="metrics-2x2-grid">
+
+        <div class="admin-stat-box">
+            <div class="stat-header-flex">
+                <span class="stat-title-label">Müşteriler</span>
+                <div class="stat-icon-square" style="background: rgba(108, 99, 255, 0.15); color: var(--primary-light);">
+                    <i data-lucide="users" style="width: 18px; height: 18px;"></i>
+                </div>
+            </div>
+            <div>
+                <div class="stat-big-val text-gradient">{{ total_users }}</div>
+                <div class="stat-sub-label">Kayıtlı Müşteri</div>
+            </div>
+        </div>
+
+        <div class="admin-stat-box">
+            <div class="stat-header-flex">
+                <span class="stat-title-label">Kafeler</span>
+                <div class="stat-icon-square" style="background: rgba(0, 230, 118, 0.15); color: var(--success);">
+                    <i data-lucide="coffee" style="width: 18px; height: 18px;"></i>
+                </div>
+            </div>
+            <div>
+                <div class="stat-big-val" style="color: var(--success);">{{ active_cafes }}</div>
+                <div class="stat-sub-label">Yayındaki Kafe</div>
+            </div>
+        </div>
+
+        <div class="admin-stat-box">
+            <div class="stat-header-flex">
+                <span class="stat-title-label">Canlı Oturum</span>
+                <div class="stat-icon-square" style="background: rgba(0, 184, 217, 0.15); color: var(--info);">
+                    <i data-lucide="radio" style="width: 18px; height: 18px;"></i>
+                </div>
+            </div>
+            <div>
+                <div class="stat-big-val" style="color: var(--info);">{{ active_sessions }}</div>
+                <div class="stat-sub-label">Kafelerdeki İnsanlar</div>
+            </div>
+        </div>
+
+        <div class="admin-stat-box">
+            <div class="stat-header-flex">
+                <span class="stat-title-label">Eşleşmeler</span>
+                <div class="stat-icon-square" style="background: rgba(255, 171, 0, 0.15); color: var(--warning);">
+                    <i data-lucide="heart" style="width: 18px; height: 18px;"></i>
+                </div>
+            </div>
+            <div>
+                <div class="stat-big-val" style="color: var(--warning);">{{ total_matches }}</div>
+                <div class="stat-sub-label">Onaylanan Match</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="active-cafes-section">
+        <div class="section-head-bar">
+            <div style="font-size: 0.92rem; font-weight: 700; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="store" style="width: 18px; height: 18px; color: var(--primary-light);"></i>
+                <span>Aktif Kafeler Özeti</span>
+            </div>
+            <a href="{{ url_for('admin.cafes') }}" style="font-size: 0.78rem; color: var(--primary-light); text-decoration: none; font-weight: 600;">
+                Tüm Kafeler &rarr;
+            </a>
+        </div>
+
+        {% if recent_cafes %}
+            {% for cafe in recent_cafes %}
+            <div class="cafe-list-row">
+                <div class="cafe-info-flex">
+                    <div class="cafe-icon-badge">
+                        <i data-lucide="coffee" style="width: 18px; height: 18px;"></i>
+                    </div>
+                    <div style="min-width: 0; flex: 1;">
+                        <span class="cafe-name-text">{{ cafe.name }}</span>
+                        <span class="cafe-slug-text">{{ cafe.qr_unique_slug }}</span>
+                    </div>
+                </div>
+
+                <div class="cafe-right-actions">
+                    <span class="badge badge-success" style="font-size: 0.7rem; padding: 3px 8px; white-space: nowrap;">
+                        {{ cafe.get_active_user_count() }} Çevrim İçi
+                    </span>
+                    <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) }}" class="btn btn-outline btn-sm" style="font-size: 0.75rem; padding: 4px 10px; border-radius: 8px; white-space: nowrap;">
+                        Yönet
+                    </a>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center text-muted" style="padding: 16px 0; font-size: 0.82rem;">Sistemde yayında olan aktif kafe bulunmuyor.</div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

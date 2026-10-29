@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% block title %}{{ cafe.name }} — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('admin.cafes') }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ cafe.name }}</h1>
+        <a href="{{ url_for('admin.edit_cafe', cafe_id=cafe.id) }}" class="top-bar-action" id="editBtn" title="Kafeyi Düzenle">
+            <i data-lucide="edit-3" style="width: 18px; height: 18px;"></i>
+        </a>
+    </div>
+
+    <div style="display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-md); padding: 10px 16px; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 14px;">
+        <span style="font-size: 0.85rem; color: var(--text-secondary); font-weight: 600;">Yayın & Aktiflik Durumu:</span>
+        {% if cafe.is_active %}
+            <span class="badge badge-success" style="font-size: 0.75rem; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; background: var(--success); border-radius: 50%;"></span> Aktif (Yayında)
+            </span>
+        {% else %}
+            <span class="badge badge-danger" style="font-size: 0.75rem; padding: 4px 12px; display: inline-flex; align-items: center; gap: 6px;">
+                <span style="width: 8px; height: 8px; background: var(--danger); border-radius: 50%;"></span> Pasif (Yayında Değil)
+            </span>
+        {% endif %}
+    </div>
+    <div class="admin-grid" style="margin-top: var(--space-lg);">
+        <div class="stat-card">
+            <div class="stat-value" id="liveActiveCount" style="color: var(--info); transition: all 0.3s ease;">{{ active_sessions|length }}</div>
+            <div class="stat-label">Şu An Aktif</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="liveTotalMessages" style="color: var(--accent); transition: all 0.3s ease;">{{ stats.total_messages }}</div>
+            <div class="stat-label">Toplam Mesaj</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="liveTotalSessions" style="color: var(--success); transition: all 0.3s ease;">{{ stats.total_sessions }}</div>
+            <div class="stat-label">Toplam Oturum</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" id="liveTotalMatches" style="color: var(--warning); transition: all 0.3s ease;">{{ stats.total_matches }}</div>
+            <div class="stat-label">Eşleşme</div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <a href="{{ url_for('chat.lobby', slug=cafe.qr_unique_slug) }}" class="btn btn-outline btn-block" id="testChatBtn">
+            <i data-lucide="message-square" style="width: 16px; height: 16px;"></i>
+            Sohbeti Test Et / Odaya Gir
+        </a>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-title">İşletme Giriş Hesap Bilgileri</div>
+        <div class="card" style="border: 1px solid var(--primary-light);">
+            <div class="credential-box">
+                <span class="text-secondary" style="font-size: 0.85rem;">İşletme Kullanıcı Adı / Kodu:</span>
+                <span class="credential-val">{{ cafe.business_code or 'Tanımlanmadı' }}</span>
+            </div>
+
+            <div class="credential-box">
+                <span class="text-secondary" style="font-size: 0.85rem;">Mevcut İşletme Şifresi:</span>
+                <span class="credential-val" style="color: var(--success);">{{ cafe.business_password_plain or 'Tanımlanmadı' }}</span>
+            </div>
+
+            <div class="credential-box">
+                <span class="text-secondary" style="font-size: 0.85rem;">Ortak İşletme Giriş Portalı:</span>
+                <a href="{{ url_for('auth.business_login', _external=True) }}" target="_blank" style="font-family: var(--font-mono); font-size: 0.85rem; color: var(--primary-light); text-decoration: underline;">
+                    {{ url_for('auth.business_login', _external=True) }}
+                </a>
+            </div>
+
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-sm); align-items: center;">
+            <a href="{{ url_for('admin.edit_cafe', cafe_id=cafe.id) }}" class="btn btn-outline btn-block" style="padding: 12px; font-size: 0.85rem; height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i> Kafeyi Düzenle
+            </a>
+            <form method="POST" action="{{ url_for('admin.delete_cafe', cafe_id=cafe.id) }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button class="btn btn-danger btn-block" id="deleteCafeBtn" style="padding: 12px; font-size: 0.85rem; height: 44px; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Kafeyi Tamamen Sil
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js">
+
+</script>
+<script>
+
+    lucide.createIcons();
+
+    const cafeId = parseInt("{{ cafe.id }}", 10);
+    const liveStatsUrl = "{{ url_for('admin.cafe_live_stats', cafe_id=cafe.id) }}";
+
+    function updateStatValue(elId, newVal) {
+        const el = document.getElementById(elId);
+        if (!el) return;
+        const currentVal = parseInt(el.textContent, 10);
+        if (currentVal !== newVal) {
+            el.textContent = newVal;
+            el.style.transform = 'scale(1.15)';
+            el.style.filter = 'brightness(1.35)';
+            setTimeout(() => {
+                el.style.transform = 'scale(1)';
+                el.style.filter = 'none';
+            }, 350);
+        }
+    }
+
+    async function fetchLiveStats() {
+        try {
+            const res = await fetch(liveStatsUrl);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status === 'ok') {
+                    updateStatValue('liveActiveCount', data.active_count);
+                    updateStatValue('liveTotalMessages', data.total_messages);
+                    updateStatValue('liveTotalSessions', data.total_sessions);
+                    updateStatValue('liveTotalMatches', data.total_matches);
+                }
+            }
+        } catch (e) {
+            console.error('Live stats error:', e);
+        }
+    }
+
+    try {
+        const socket = io();
+        socket.emit('join_monitor', { cafe_id: cafeId });
+
+        socket.on('cafe_stats_updated', (data) => {
+            if (data && data.cafe_id === cafeId) {
+                updateStatValue('liveActiveCount', data.active_count);
+                updateStatValue('liveTotalMessages', data.total_messages);
+                updateStatValue('liveTotalSessions', data.total_sessions);
+                updateStatValue('liveTotalMatches', data.total_matches);
+            }
+        });
+
+        socket.on('user_joined', (data) => {
+            if (data && data.active_count !== undefined) {
+                updateStatValue('liveActiveCount', data.active_count);
+            }
+            fetchLiveStats();
+        });
+
+        socket.on('user_left', (data) => {
+            if (data && data.active_count !== undefined) {
+                updateStatValue('liveActiveCount', data.active_count);
+            }
+            fetchLiveStats();
+        });
+
+        socket.on('new_message', () => {
+            fetchLiveStats();
+        });
+    } catch (err) {
+        console.warn('Socket error on cafe_detail:', err);
+    }
+
+    setInterval(fetchLiveStats, 3000);
+
+</script>
+{% endblock %}

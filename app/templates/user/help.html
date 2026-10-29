@@ -1,0 +1,98 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Yardım & Destek') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('user.settings') }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ t('Yardım & Destek') }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div style="margin-top: var(--space-lg);">
+        <h3 style="margin-bottom: var(--space-md);">{{ t('Sıkça Sorulan Sorular') }}</h3>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Talknon nasıl çalışıyor?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Kafedeki QR kodu okutarak anonim bir sohbete katılırsınız. Kafedeki diğer kullanıcılarla takma adlarla sohbet edebilir, beğendiğiniz biriyle eşleşme isteği gönderebilirsiniz. Eşleşme kabul edilirse karşılıklı profiller görüntülenir ve özel mesajlaşma başlar.') }}
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Kimliğim gizli mi?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Evet, anonim sohbette sadece takma adınız görünür. Gerçek adınız, telefon numaranız ve profil bilgileriniz eşleşme kabul edilene kadar hiçbir kullanıcıya gösterilmez.') }}
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Eşleşme nedir?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Sohbette bir kullanıcının mesajına tıklayarak eşleşme isteği gönderebilirsiniz. Karşı taraf kabul ederse her ikiniz de birbirinizin profilini görür ve özel mesajlaşma başlar. Kafeden çıktığınızda bile özel mesajlaşma devam eder.') }}
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Birini nasıl rapor ederim?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Sohbette herhangi bir mesajın yanındaki bayrak simgesine tıklayarak rapor edebilirsiniz. Raporunuz işletme sahibi ve yöneticiler tarafından incelenecektir. Uygunsuz davranan kullanıcılar geçici veya kalıcı olarak yasaklanabilir.') }}
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Birini nasıl engellerim?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Özel mesajlaşma ekranında sağ üstteki engelle butonuna tıklayabilir veya Ayarlar sayfasındaki Engellenen Kullanıcılar bölümünden yönetebilirsiniz. Engellediğiniz kullanıcılar size mesaj gönderemez.') }}
+            </div>
+        </div>
+
+        <div class="faq-item" onclick="this.classList.toggle('open')">
+            <div class="faq-question">
+                {{ t('Konum neden gerekli?') }}
+                <i data-lucide="chevron-down" class="faq-chevron" style="width: 16px; height: 16px;"></i>
+            </div>
+            <div class="faq-answer">
+                {{ t('Talknon, kafede fiziksel olarak bulunan insanların tanışmasını sağlar. Konum doğrulaması, sadece kafede olan kişilerin sohbete katılmasını garantiler. Konum bilginiz saklanmaz, sadece anlık doğrulama için kullanılır.') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mt-xl">
+        <h4 style="margin-bottom: var(--space-md);">{{ t('İletişim') }}</h4>
+        <p class="text-secondary" style="font-size: 0.85rem; margin-bottom: var(--space-sm);">
+            {{ t('Sorunuz veya öneriniz mi var? Bize ulaşın:') }}
+        </p>
+        <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm);">
+            <i data-lucide="mail" style="width: 16px; height: 16px; color: var(--primary-light);"></i>
+            <span style="font-size: 0.9rem;">destek@talknon.com</span>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

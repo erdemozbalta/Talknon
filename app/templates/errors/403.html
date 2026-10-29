@@ -1,0 +1,14 @@
+{% extends "base.html" %}
+{% block title %}Erisim Engellendi — Talknon{% endblock %}
+{% block navbar %}{% endblock %}
+{% block content %}
+<div class="page-content" style="display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 60vh; text-align: center;">
+    <i data-lucide="shield-off" style="width: 64px; height: 64px; color: var(--warning); margin-bottom: var(--space-lg);"></i>
+    <h2 style="margin-bottom: var(--space-sm);">403</h2>
+    <p class="text-secondary" style="margin-bottom: var(--space-xl);">Bu sayfaya erisim yetkiniz yok.</p>
+    <a href="/" class="btn btn-primary" id="goHomeBtn">Ana Sayfa</a>
+</div>
+{% endblock %}
+{% block extra_js %}<script>
+lucide.createIcons();
+</script>{% endblock %}

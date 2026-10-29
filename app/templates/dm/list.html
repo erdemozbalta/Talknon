@@ -1,0 +1,496 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Eşleşmelerim') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content" style="padding: 0 0 calc(84px + env(safe-area-inset-bottom, 12px)) 0;">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">{{ t('Özel Mesajlar & Eşleşmeler') }}</h1>
+    </div>
+
+    <div style="margin: 12px 12px 16px 12px; background: rgba(22, 25, 42, 0.82); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(244, 63, 94, 0.25); border-radius: 24px; padding: 16px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.35);" id="pendingSection">
+        <div style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="heart" style="width: 18px; height: 18px; color: #f43f5e; filter: drop-shadow(0 0 6px rgba(244, 63, 94, 0.5));"></i>
+                <span>{{ t('Gelen Eşleşme İstekleri') }}</span>
+                {% if pending_requests %}
+                <span class="badge" style="background: linear-gradient(135deg, #f43f5e, #e11d48); color: white; border-radius: 99px; font-size: 0.72rem; padding: 2px 8px; font-weight: 800; box-shadow: 0 3px 10px rgba(244, 63, 94, 0.5);">{{ pending_requests|length }}</span>
+                {% endif %}
+            </div>
+        </div>
+
+        <div style="font-size: 0.76rem; color: #ffca28; background: rgba(255, 183, 77, 0.08); border: 1px solid rgba(255, 183, 77, 0.22); padding: 9px 12px; border-radius: 14px; margin: 10px 0 14px 0; display: flex; align-items: center; gap: 8px; line-height: 1.35;">
+            <i data-lucide="info" style="width: 16px; height: 16px; flex-shrink: 0; color: #ffca28;"></i>
+            <span>{{ t('Kafeden ayrıldığınızda kabul edilmeyen gelen eşleşme istekleri otomatik olarak silinir.') }}</span>
+        </div>
+
+        {% if pending_requests %}
+        <div style="display: flex; flex-direction: column; gap: 10px;">
+            {% for req in pending_requests %}
+            <div style="background: rgba(30, 34, 56, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);" id="pendingCard-{{ req.id }}">
+                <div>
+                    <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff;">
+                        {{ req.sender_nickname }}
+                    </div>
+                    <div style="font-size: 0.76rem; color: #a78bfa; display: flex; align-items: center; gap: 4px; margin-top: 3px; font-weight: 600;">
+                        <i data-lucide="map-pin" style="width: 12px; height: 12px;"></i>
+                        <span><strong>{{ req.cafe_name }}</strong> {{ t('Kafesinde') }}</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 6px;">
+                    <form method="POST" action="{{ url_for('dm.respond_request', request_id=req.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="accept">
+                        <button type="submit" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border-radius: 12px; padding: 7px 14px; font-weight: 700; font-size: 0.8rem; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="check" style="width: 14px; height: 14px;"></i> {{ t('Kabul Et') }}
+                        </button>
+                    </form>
+                    <form method="POST" action="{{ url_for('dm.respond_request', request_id=req.id) }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <input type="hidden" name="action" value="reject">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 7px 10px; color: #cbd5e1;" title="Reddet">
+                            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                        </button>
+                    </form>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <div style="background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.12); border-radius: 16px; padding: 14px 12px; text-align: center; color: #94a3b8; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; justify-content: center; gap: 8px;">
+            <i data-lucide="inbox" style="width: 18px; height: 18px; color: #64748b;"></i>
+            <span>{{ t('Şu anda aktif kafelerden gelen yeni bir eşleşme isteği yok.') }}</span>
+        </div>
+        {% endif %}
+    </div>
+
+    <div class="dm-section-header">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="message-square" style="width: 18px; height: 18px; color: #a78bfa;"></i>
+            <span>{{ t('Mesajlar') }}</span>
+        </div>
+        {% if conversations %}
+        <span class="badge badge-primary" style="border-radius: 99px; padding: 2px 8px; font-size: 0.75rem;">{{ conversations|length }}</span>
+        {% endif %}
+    </div>
+
+    <div class="dm-list-container" id="conversationsList">
+        {% for item in conversations %}
+        <a href="{{ url_for('dm.conversation', match_id=item.match.id) }}" class="dm-list-item" id="dmItem-{{ item.match.id }}" data-match-id="{{ item.match.id }}">
+            <div class="dm-avatar-ring">
+                <div class="dm-avatar-inner">
+                    {% if item.other_user.profile_photo %}
+                    <img src="{{ url_for('static', filename=item.other_user.profile_photo) }}" alt="Avatar">
+                    {% else %}
+                    {{ (item.other_user.display_name if item.other_user else t('Kullanıcı'))[0]|upper }}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="dm-list-info">
+                <div class="dm-list-name-row">
+                    <div class="dm-list-name">
+                        {% if item.other_user %}
+                        {{ item.other_user.display_name }}
+                        {% else %}
+                        {{ t('Kullanıcı') }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="dm-list-preview {% if item.unread_count > 0 %}has-unread{% endif %}" id="dmPreview-{{ item.match.id }}">
+                    {% if item.last_message %}
+                    {{ item.last_message.content[:50] }}{% if item.last_message.content|length > 50 %}...{% endif %}
+                    {% endif %}
+                </div>
+            </div>
+            <div class="dm-list-meta" style="display: flex; flex-direction: column; align-items: flex-end; gap: 4px;">
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <div class="dm-list-time" id="dmTime-{{ item.match.id }}">
+                        {% if item.last_message %}
+                        {{ item.last_message.created_at.strftime('%H:%M') }}
+                        {% endif %}
+                    </div>
+                    <form method="POST" action="{{ url_for('dm.clear_chat', match_id=item.match.id) }}" style="display: inline; margin: 0;" onclick="event.stopPropagation();">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-ghost btn-sm" style="padding: 4px; color: #f43f5e; opacity: 0.75; transition: opacity 0.2s;" title="{{ t('Sohbet Geçmişini Sil') }}" onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.75'">
+                            <i data-lucide="trash-2" style="width: 15px; height: 15px;"></i>
+                        </button>
+                    </form>
+                </div>
+                {% if item.unread_count > 0 %}
+                <span class="dm-unread-badge" id="dmBadge-{{ item.match.id }}">{{ item.unread_count }}</span>
+                {% endif %}
+            </div>
+        </a>
+        {% endfor %}
+
+        {% if conversations %}
+        <div id="emptyConversationsNotice" style="display: none; background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 16px; text-align: center; color: #94a3b8; font-size: 0.84rem; font-weight: 600; margin-bottom: 16px;">
+        {% else %}
+        <div id="emptyConversationsNotice" style="background: rgba(255, 255, 255, 0.03); border: 1px dashed rgba(255, 255, 255, 0.12); border-radius: 18px; padding: 16px; text-align: center; color: #94a3b8; font-size: 0.84rem; font-weight: 600; margin-bottom: 16px;">
+        {% endif %}
+            <i data-lucide="message-square-off" style="width: 20px; height: 20px; color: #64748b; margin-bottom: 4px; display: block; margin: 0 auto 6px auto;"></i>
+            <span>{{ t('Henüz aktif bir mesajlaşmanız yok.') }}</span>
+        </div>
+    </div>
+
+    <div class="dm-section-header" style="margin-top: 24px;">
+        <div style="display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="sparkles" style="width: 18px; height: 18px; color: #f59e0b;"></i>
+            <span>{{ t('Eşleşmelerim') }}</span>
+        </div>
+        {% if matched_users %}
+        <span class="badge" style="background: linear-gradient(135deg, #f59e0b, #d97706); color: white; border-radius: 99px; padding: 2px 8px; font-size: 0.75rem; font-weight: 800;">{{ matched_users|length }}</span>
+        {% endif %}
+    </div>
+
+    <div class="dm-list-container">
+        {% for item in matched_users %}
+        <div class="dm-list-item dm-match-card" id="matchItem-{{ item.match.id }}" style="background: rgba(30, 34, 56, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px;">
+
+            <a href="{{ url_for('dm.conversation', match_id=item.match.id) }}" style="display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; min-width: 0;">
+                <div class="dm-avatar-ring" style="background: linear-gradient(135deg, #f59e0b, #ec4899); flex-shrink: 0;">
+                    <div class="dm-avatar-inner">
+                        {% if item.other_user.profile_photo %}
+                        <img src="{{ url_for('static', filename=item.other_user.profile_photo) }}" alt="Avatar">
+                        {% else %}
+                        {{ (item.other_user.display_name if item.other_user else t('Kullanıcı'))[0]|upper }}
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="dm-list-info" style="min-width: 0; flex: 1;">
+                    <div class="dm-list-name" style="font-weight: 800; color: #ffffff; font-size: 1rem; line-height: 1.35; white-space: normal; word-break: break-word;">
+                        {% if item.other_user %}
+                        {{ item.other_user.display_name }}
+                        {% else %}
+                        {{ t('Kullanıcı') }}
+                        {% endif %}
+                    </div>
+                    <div class="dm-list-preview" style="color: #f59e0b; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-top: 3px;">
+                        <i data-lucide="sparkles" style="width: 13px; height: 13px;"></i>
+                        <span>{{ t('Yeni Eşleşme') }}</span>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0;"></i>
+            </a>
+
+            <div style="display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 10px;">
+                <button type="button" class="btn btn-sm" data-match-id="{{ item.match.id }}" data-user-name="{{ item.other_user.display_name if item.other_user else t('Kullanıcı') }}" onclick="handleUnmatchClick(event, this)" style="flex: 1; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.28); color: #f87171; font-weight: 700; font-size: 0.82rem; border-radius: 12px; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='rgba(239, 68, 68, 0.22)'" onmouseout="this.style.background='rgba(239, 68, 68, 0.12)'">
+                    <i data-lucide="user-x" style="width: 15px; height: 15px;"></i>
+                    <span>{{ t('Eşleşmeyi Kaldır') }}</span>
+                </button>
+                <a href="{{ url_for('dm.conversation', match_id=item.match.id) }}" class="btn btn-sm" style="flex: 1; background: linear-gradient(135deg, #6c63ff, #8b5cf6); color: #ffffff; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 0.82rem; border: none; text-decoration: none; box-shadow: 0 4px 12px rgba(108, 99, 255, 0.35); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="message-circle" style="width: 15px; height: 15px;"></i>
+                    <span>{{ t('Sohbet Et') }}</span>
+                </a>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not matched_users and not conversations %}
+        <div class="empty-state" style="padding: 32px 20px; background: rgba(22, 25, 42, 0.6); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 24px; margin-top: 6px;">
+            <div class="empty-state-icon" style="background: rgba(108, 99, 255, 0.15); width: 64px; height: 64px; border-radius: 20px; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+                <i data-lucide="heart" style="width: 32px; height: 32px; color: var(--primary-light);"></i>
+            </div>
+            <h3 style="margin-bottom: 8px; font-size: 1.1rem; color: #ffffff; font-weight: 800;">{{ t('Henüz Eşleşmeniz Yok') }}</h3>
+            <p class="empty-state-text" style="font-size: 0.84rem; color: #94a3b8; line-height: 1.5; max-width: 320px; margin: 0 auto;">
+                {{ t('Kafedeki anonim sohbette beğendiğiniz kişilerin takma adına tıklayarak eşleşme isteği gönderebilirsiniz.') }}<br><br>
+                {{ t('İsteğiniz kabul edildiğinde kişilerin gerçek profilleri açılır ve burada özel mesajlaşabilirsiniz.') }}
+            </p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="action-modal-overlay" id="unmatchConfirmModal">
+    <div class="action-modal-card" style="max-width: 320px; padding: 22px 20px; border-radius: 20px; text-align: center;">
+        <div style="width: 52px; height: 52px; border-radius: 16px; background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #f43f5e; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 14px;">
+            <i data-lucide="user-x" style="width: 26px; height: 26px;"></i>
+        </div>
+
+        <h3 style="font-size: 1.1rem; font-weight: 800; color: #ffffff; margin-bottom: 8px;">
+            {{ t('Eşleşmeyi Kaldır') }}
+        </h3>
+
+        <p style="font-size: 0.85rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 20px;">
+            <strong id="unmatchTargetName" style="color: #ffffff;">Kullanıcı</strong> {{ t('adlı kullanıcı ile eşleşmenizi kaldırmak istediğinize emin misiniz?') }}
+        </p>
+
+        <form method="POST" id="unmatchActionForm" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: flex; gap: 10px;">
+                <button type="button" class="btn btn-outline" onclick="closeUnmatchModal()" style="flex: 1; border-radius: 12px; padding: 10px; font-weight: 700; font-size: 0.84rem;">
+                    {{ t('İptal') }}
+                </button>
+                <button type="submit" class="btn" style="flex: 1; border-radius: 12px; background: linear-gradient(135deg, #e11d48, #f43f5e); color: #ffffff; border: none; padding: 10px; font-weight: 700; font-size: 0.84rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px; box-shadow: 0 4px 15px rgba(244, 63, 94, 0.35);">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                    {{ t('Evet, Kaldır') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    function handleUnmatchClick(event, btn) {
+        if (event) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        const matchId = btn.getAttribute('data-match-id');
+        const userName = btn.getAttribute('data-user-name');
+        openUnmatchModal(matchId, userName);
+    }
+
+    function openUnmatchModal(matchId, userName) {
+        document.getElementById('unmatchTargetName').textContent = userName || 'Kullanıcı';
+        document.getElementById('unmatchActionForm').action = '/dm/' + matchId + '/unmatch';
+        document.getElementById('unmatchConfirmModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeUnmatchModal() {
+        document.getElementById('unmatchConfirmModal').classList.remove('active');
+    }
+
+    document.querySelectorAll('.action-modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+
+    const socket = window.globalSocket || io();
+
+    function updateConversationItem(data) {
+        if (!data || !data.match_id) return;
+        const matchId = String(data.match_id);
+        const convList = document.getElementById('conversationsList');
+        const emptyNotice = document.getElementById('emptyConversationsNotice');
+        let itemEl = document.getElementById('dmItem-' + matchId);
+
+        if (!itemEl) {
+            const matchItem = document.getElementById('matchItem-' + matchId);
+            if (matchItem) {
+
+                setTimeout(() => window.location.reload(), 400);
+                return;
+            }
+        }
+
+        if (itemEl) {
+
+            const previewEl = itemEl.querySelector('.dm-list-preview');
+            if (previewEl) {
+                let contentText = data.content || '';
+                let truncated = contentText.length > 50 ? contentText.substring(0, 50) + '...' : contentText;
+                previewEl.textContent = truncated;
+                if (!data.is_own) {
+                    previewEl.classList.add('has-unread');
+                }
+            }
+
+            let timeEl = itemEl.querySelector('.dm-list-time');
+            const formattedTime = data.time || (data.timestamp ? new Date(data.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '');
+            if (timeEl && formattedTime) {
+                timeEl.textContent = formattedTime;
+            }
+
+            const metaEl = itemEl.querySelector('.dm-list-meta');
+            let badgeEl = itemEl.querySelector('.dm-unread-badge');
+            if (!data.is_own) {
+                let count = data.unread_count || data.match_unread;
+                if (count === undefined || count === null) {
+                    let curr = badgeEl ? parseInt(badgeEl.textContent) || 0 : 0;
+                    count = curr + 1;
+                }
+                if (count > 0) {
+                    if (!badgeEl && metaEl) {
+                        badgeEl = document.createElement('span');
+                        badgeEl.className = 'dm-unread-badge';
+                        badgeEl.id = 'dmBadge-' + matchId;
+                        metaEl.appendChild(badgeEl);
+                    }
+                    if (badgeEl) {
+                        badgeEl.textContent = count;
+                        badgeEl.style.display = 'inline-block';
+                    }
+                }
+            }
+
+            if (convList && convList.firstElementChild !== itemEl) {
+                convList.insertBefore(itemEl, convList.firstElementChild);
+            }
+
+            itemEl.style.transition = 'none';
+            itemEl.style.background = 'rgba(139, 92, 246, 0.22)';
+            itemEl.style.borderColor = 'rgba(167, 139, 250, 0.5)';
+            itemEl.style.boxShadow = '0 0 20px rgba(139, 92, 246, 0.35)';
+            setTimeout(() => {
+                itemEl.style.transition = 'all 0.6s ease';
+                itemEl.style.background = '';
+                itemEl.style.borderColor = '';
+                itemEl.style.boxShadow = '';
+            }, 350);
+
+            if (emptyNotice) {
+                emptyNotice.style.display = 'none';
+            }
+        }
+    }
+
+    socket.on('dm_conversation_updated', updateConversationItem);
+    socket.on('new_direct_message', updateConversationItem);
+
+    socket.on('dm_messages_read', function(data) {
+        if (!data || !data.match_id) return;
+        const itemEl = document.getElementById('dmItem-' + data.match_id);
+        if (itemEl) {
+            const previewEl = itemEl.querySelector('.dm-list-preview');
+            if (previewEl) previewEl.classList.remove('has-unread');
+            const badgeEl = itemEl.querySelector('.dm-unread-badge');
+            if (badgeEl) badgeEl.remove();
+        }
+    });
+
+    socket.on('match_removed', function(data) {
+        if (!data) return;
+        const affectedIds = data.match_ids ? data.match_ids.map(String) : [String(data.match_id)];
+        affectedIds.forEach(id => {
+            const matchItem = document.getElementById('matchItem-' + id);
+            if (matchItem) matchItem.remove();
+            const dmItem = document.getElementById('dmItem-' + id);
+            if (dmItem) dmItem.remove();
+        });
+
+        const convList = document.getElementById('conversationsList');
+        const emptyNotice = document.getElementById('emptyConversationsNotice');
+        if (convList && emptyNotice) {
+            const remainingDMs = convList.querySelectorAll('.dm-list-item');
+            if (remainingDMs.length === 0) {
+                emptyNotice.style.display = 'block';
+            }
+        }
+    });
+
+    socket.on('match_request_received', function(data) {
+        if (!data || !data.request_id) return;
+        const pendingSection = document.getElementById('pendingSection');
+        if (!pendingSection) return;
+
+        let listContainer = pendingSection.querySelector('div[style*="flex-direction: column"]');
+        if (!listContainer) {
+
+            const emptyDiv = pendingSection.querySelector('div[style*="border: 1px dashed"]');
+            if (emptyDiv) emptyDiv.remove();
+
+            listContainer = document.createElement('div');
+            listContainer.style.cssText = 'display: flex; flex-direction: column; gap: 10px;';
+            pendingSection.appendChild(listContainer);
+        }
+
+        const existingCard = document.getElementById('pendingCard-' + data.request_id);
+        if (existingCard) return;
+
+        const csrfToken = document.querySelector('input[name="csrf_token"]') ? document.querySelector('input[name="csrf_token"]').value : '';
+        const card = document.createElement('div');
+        card.id = 'pendingCard-' + data.request_id;
+        card.style.cssText = 'background: rgba(30, 34, 56, 0.85); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 18px; padding: 12px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2); animation: toastSlideUp 0.35s ease;';
+        card.innerHTML = `
+            <div>
+                <div style="font-size: 0.95rem; font-weight: 800; color: #ffffff;">
+                    ${data.from_nickname || 'Kullanıcı'}
+                </div>
+                <div style="font-size: 0.76rem; color: #a78bfa; display: flex; align-items: center; gap: 4px; margin-top: 3px; font-weight: 600;">
+                    <i data-lucide="map-pin" style="width: 12px; height: 12px;"></i>
+                    <span><strong>${data.cafe_name || 'Kafe'}</strong> ${typeof window.t === 'function' ? window.t('Kafesinde') : 'Kafesinde'}</span>
+                </div>
+            </div>
+            <div style="display: flex; gap: 6px;">
+                <form method="POST" action="/dm/respond-request/${data.request_id}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <input type="hidden" name="action" value="accept">
+                    <button type="submit" class="btn btn-sm" style="background: linear-gradient(135deg, #10b981, #059669); color: #ffffff; border-radius: 12px; padding: 7px 14px; font-weight: 700; font-size: 0.8rem; border: none; box-shadow: 0 4px 14px rgba(16, 185, 129, 0.35); display: inline-flex; align-items: center; gap: 4px;">
+                        <i data-lucide="check" style="width: 14px; height: 14px;"></i> ${typeof window.t === 'function' ? window.t('Kabul Et') : 'Kabul Et'}
+                    </button>
+                </form>
+                <form method="POST" action="/dm/respond-request/${data.request_id}" style="display: inline;">
+                    <input type="hidden" name="csrf_token" value="${csrfToken}">
+                    <input type="hidden" name="action" value="reject">
+                    <button type="submit" class="btn btn-ghost btn-sm" style="background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.12); border-radius: 12px; padding: 7px 10px; color: #cbd5e1;" title="Reddet">
+                        <i data-lucide="x" style="width: 14px; height: 14px;"></i>
+                    </button>
+                </form>
+            </div>
+        `;
+        listContainer.prepend(card);
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    });
+
+    socket.on('match_accepted', function(data) {
+        if (!data || !data.match_id) return;
+        const pendingCard = document.getElementById('pendingCard-' + (data.request_id || data.match_id));
+        if (pendingCard) pendingCard.remove();
+
+        const matchId = String(data.match_id);
+        if (document.getElementById('matchItem-' + matchId)) return;
+
+        const matchedSection = document.querySelectorAll('.dm-list-container')[1] || document.querySelector('.dm-list-container');
+        if (!matchedSection) return;
+
+        const emptyState = document.querySelector('.empty-state');
+        if (emptyState) emptyState.remove();
+
+        const userName = data.other_user_name || data.partner_name || data.by_nickname || 'Kullanıcı';
+        const userPhoto = data.other_user_photo || data.partner_photo || '';
+        const userInitial = userName.charAt(0).toUpperCase();
+
+        const newMatchCard = document.createElement('div');
+        newMatchCard.className = 'dm-list-item dm-match-card';
+        newMatchCard.id = 'matchItem-' + matchId;
+        newMatchCard.style.cssText = 'background: rgba(30, 34, 56, 0.65); border: 1px solid rgba(255, 255, 255, 0.08); flex-direction: column; align-items: stretch; gap: 12px; padding: 14px 16px; animation: toastSlideUp 0.35s ease;';
+        newMatchCard.innerHTML = `
+            <a href="/dm/${matchId}" style="display: flex; align-items: center; gap: 14px; text-decoration: none; color: inherit; min-width: 0;">
+                <div class="dm-avatar-ring" style="background: linear-gradient(135deg, #f59e0b, #ec4899); flex-shrink: 0;">
+                    <div class="dm-avatar-inner">
+                        ${userPhoto ? `<img src="/static/${userPhoto}" alt="Avatar">` : userInitial}
+                    </div>
+                </div>
+                <div class="dm-list-info" style="min-width: 0; flex: 1;">
+                    <div class="dm-list-name" style="font-weight: 800; color: #ffffff; font-size: 1rem; line-height: 1.35; white-space: normal; word-break: break-word;">
+                        ${userName}
+                    </div>
+                    <div class="dm-list-preview" style="color: #f59e0b; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 4px; margin-top: 3px;">
+                        <i data-lucide="sparkles" style="width: 13px; height: 13px;"></i>
+                        <span>${typeof window.t === 'function' ? window.t('Yeni Eşleşme') : 'Yeni Eşleşme'}</span>
+                    </div>
+                </div>
+                <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: var(--text-muted); flex-shrink: 0;"></i>
+            </a>
+            <div style="display: flex; align-items: center; gap: 10px; border-top: 1px solid rgba(255, 255, 255, 0.06); padding-top: 10px;">
+                <button type="button" class="btn btn-sm" data-match-id="${matchId}" data-user-name="${userName}" onclick="handleUnmatchClick(event, this)" style="flex: 1; background: rgba(239, 68, 68, 0.12); border: 1px solid rgba(239, 68, 68, 0.28); color: #f87171; font-weight: 700; font-size: 0.82rem; border-radius: 12px; padding: 8px 12px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; cursor: pointer; transition: all 0.2s;">
+                    <i data-lucide="user-x" style="width: 15px; height: 15px;"></i>
+                    <span>${typeof window.t === 'function' ? window.t('Eşleşmeyi Kaldır') : 'Eşleşmeyi Kaldır'}</span>
+                </button>
+                <a href="/dm/${matchId}" class="btn btn-sm" style="flex: 1; background: linear-gradient(135deg, #6c63ff, #8b5cf6); color: #ffffff; border-radius: 12px; padding: 8px 14px; font-weight: 700; font-size: 0.82rem; border: none; text-decoration: none; box-shadow: 0 4px 12px rgba(108, 99, 255, 0.35); display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="message-circle" style="width: 15px; height: 15px;"></i>
+                    <span>${typeof window.t === 'function' ? window.t('Sohbet Et') : 'Sohbet Et'}</span>
+                </a>
+            </div>
+        `;
+        matchedSection.prepend(newMatchCard);
+        if (window.lucide && typeof window.lucide.createIcons === 'function') {
+            window.lucide.createIcons();
+        }
+    });
+
+</script>
+{% endblock %}

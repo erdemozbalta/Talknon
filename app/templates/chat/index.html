@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Sohbet — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">Talknon</h1>
+    </div>
+
+    <div class="qr-hero-card">
+        <div class="qr-icon-wrapper">
+            <i data-lucide="qr-code" style="width: 42px; height: 42px;"></i>
+        </div>
+
+        <h2 style="font-size: 1.4rem; font-weight: 800; margin-bottom: 8px; color: var(--text-primary);">
+            {{ t('Kafedeki QR Kodu Okutun') }}
+        </h2>
+
+        <p class="text-muted" style="font-size: 0.88rem; line-height: 1.5; margin-bottom: var(--space-xl); max-width: 320px; margin-left: auto; margin-right: auto;">
+            {{ t('Masanızda yer alan Talknon QR kodunu telefon kameranızla taratarak kafe içi anonim sohbet odasına anında katılın.') }}
+        </p>
+
+        <button type="button" class="btn btn-primary btn-block btn-lg" onclick="openQrScanner()" id="openCameraBtn" style="border-radius: 22px; box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4); font-size: 1rem;">
+            <i data-lucide="camera" style="width: 20px; height: 20px;"></i> {{ t('QR Kod Tarat / Kamerayı Aç') }}
+        </button>
+    </div>
+
+    <div class="manual-code-box">
+        <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;">
+            <i data-lucide="terminal" style="width: 18px; height: 18px; color: var(--primary-light);"></i>
+            <h4 style="margin: 0; font-size: 0.9rem; color: var(--text-primary);">{{ t('Kafeye Kod Yazarak Katıl (Masaüstü / Manuel)') }}</h4>
+        </div>
+        <p class="text-muted" style="font-size: 0.78rem; margin-bottom: var(--space-sm);">
+            {{ t('Kamera kullanamıyorsanız kafenizin QR kod kelimesini (slug) yazarak sohbete katılabilirsiniz:') }}
+        </p>
+        <form onsubmit="joinBySlug(event)" style="display: flex; gap: var(--space-sm);">
+            <input type="text" id="cafeSlugInput" class="form-input" placeholder="Örn: starbucks-kadikoy" style="flex: 1; border-radius: 14px; font-family: var(--font-mono);" required>
+            <button type="submit" class="btn btn-outline btn-sm" style="border-radius: 14px; padding: 0 16px;">{{ t('Katıl') }}</button>
+        </form>
+    </div>
+</div>
+
+<div id="qrScannerModal" class="modal-overlay" style="display: none;">
+    <div class="modal-card">
+        <button type="button" onclick="closeQrScanner()" style="position: absolute; right: 16px; top: 16px; background: rgba(255,255,255,0.08); border: none; color: var(--text-primary); cursor: pointer; width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; z-index: 10;">
+            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+
+        <div style="text-align: center; margin-bottom: var(--space-md);">
+            <h3 style="font-size: 1.2rem; font-weight: 800; margin-bottom: 4px;">{{ t('QR Kodu Hizalayın') }}</h3>
+            <p class="text-muted" style="font-size: 0.8rem; margin: 0;">{{ t('Kafedeki masada yer alan QR kodu kameranıza hizalayın.') }}</p>
+        </div>
+
+        <div id="qrReader" style="width: 100%; min-height: 260px; border-radius: 18px; overflow: hidden; background: #000; border: 2px solid var(--primary-light);"></div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/html5-qrcode">
+
+</script>
+<script>
+
+    lucide.createIcons();
+
+    let html5QrCode = null;
+
+    function openQrScanner() {
+        document.getElementById('qrScannerModal').style.display = 'flex';
+
+        if (!html5QrCode) {
+            html5QrCode = new Html5Qrcode("qrReader");
+        }
+
+        html5QrCode.start(
+            { facingMode: "environment" },
+            { fps: 10, qrbox: { width: 220, height: 220 } },
+            (decodedText) => {
+
+                html5QrCode.stop().then(() => {
+                    document.getElementById('qrScannerModal').style.display = 'none';
+                    if (decodedText.includes('/cafe/')) {
+                        window.location.href = decodedText;
+                    } else {
+                        window.location.href = '/cafe/' + encodeURIComponent(decodedText);
+                    }
+                }).catch(() => {
+                    window.location.href = '/cafe/' + encodeURIComponent(decodedText);
+                });
+            },
+            (errorMessage) => {
+
+            }
+        ).catch(err => {
+            alert("Kamera başlatılamadı. Lütfen kamera izinlerinizi kontrol edin veya manuel kod girişini kullanın.");
+            document.getElementById('qrScannerModal').style.display = 'none';
+        });
+    }
+
+    function closeQrScanner() {
+        if (html5QrCode && html5QrCode.isScanning) {
+            html5QrCode.stop().then(() => {
+                document.getElementById('qrScannerModal').style.display = 'none';
+            }).catch(() => {
+                document.getElementById('qrScannerModal').style.display = 'none';
+            });
+        } else {
+            document.getElementById('qrScannerModal').style.display = 'none';
+        }
+    }
+
+    let isJoining = false;
+    function joinBySlug(e) {
+        e.preventDefault();
+        if (isJoining) return;
+        const input = document.getElementById('cafeSlugInput');
+        const submitBtn = e.target.querySelector('button[type="submit"]');
+        const slug = input ? input.value.trim() : '';
+        if (slug) {
+            isJoining = true;
+            if (submitBtn) {
+                submitBtn.disabled = true;
+                submitBtn.style.opacity = '0.6';
+            }
+            window.location.href = '/cafe/' + encodeURIComponent(slug);
+            setTimeout(() => {
+                isJoining = false;
+                if (submitBtn) {
+                    submitBtn.disabled = false;
+                    submitBtn.style.opacity = '1';
+                }
+            }, 3000);
+        }
+    }
+
+</script>
+{% endblock %}

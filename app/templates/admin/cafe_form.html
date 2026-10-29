@@ -1,0 +1,533 @@
+{% extends "base.html" %}
+{% block title %}{{ 'Kafe Düzenle' if cafe else 'Yeni Kafe Ekle' }} — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) if cafe else url_for('admin.cafes') }}" class="top-bar-action" id="backBtn" title="Geri Dön">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ 'Kafe Düzenle' if cafe else 'Yeni Kafe Ekle' }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <form method="POST" style="margin-top: var(--space-lg);" id="cafeForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="business-section">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: var(--space-xs);">
+                <i data-lucide="store" style="width: 20px; height: 20px; color: var(--primary-light);"></i>
+                <h3 style="font-size: 1rem; color: var(--primary-light); margin: 0;">İşletme Giriş Hesabı</h3>
+            </div>
+            <p class="text-muted" style="font-size: 0.8rem; margin-bottom: var(--space-md);">
+                Kafenin işletme sahibinin sisteme giriş yapabilmesi için işletme kodunu ve şifresini belirleyin.
+            </p>
+
+            <div class="form-group">
+                <label class="form-label" for="business_code">İşletme Kullanıcı Adı / Kodu *</label>
+                <div style="display: flex; gap: var(--space-sm);">
+                    <input type="text" name="business_code" id="business_code" class="form-input"
+                           value="{{ cafe.business_code if cafe else '' }}"
+                           placeholder="TLK-KADIKOY veya TLK-123456" required style="flex: 1; font-weight: 700; color: var(--primary-light);"
+                           {% if cafe %}readonly style="background: rgba(255,255,255,0.03); cursor: not-allowed; opacity: 0.8;"{% endif %}>
+                    {% if not cafe %}
+                    <button type="button" class="btn btn-outline btn-sm" onclick="generateRandomCode()">Rastgele Kod Üret</button>
+                    {% endif %}
+                </div>
+                {% if cafe %}
+                <span class="text-muted" style="font-size: 0.75rem; margin-top: 4px; display: block; color: #a78bfa;">
+                    İşletme kullanıcı kodu kafe oluşturulurken atanır ve değiştirilemez.
+                </span>
+                {% endif %}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 0;">
+                <label class="form-label" for="business_password">İşletme Giriş Şifresi *</label>
+
+                <div style="position: relative; width: 100%; margin-bottom: 10px;">
+                    <input type="password" name="business_password" id="business_password" class="form-input"
+                           value="{{ cafe.business_password_plain if cafe and cafe.business_password_plain else '' }}"
+                           placeholder="En az 8 karakter şifre girin" minlength="8" required
+                           style="width: 100%; padding-right: 48px; font-family: var(--font-mono); font-weight: 700; font-size: 0.95rem; color: var(--success); letter-spacing: 0.5px;">
+
+                    <button type="button" onclick="togglePasswordVisibility()" title="Şifreyi Göster / Gizle"
+                            style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); background: none; border: none; color: var(--text-muted); cursor: pointer; padding: 6px; display: flex; align-items: center; justify-content: center; z-index: 5;">
+                        <i data-lucide="eye" id="eyeIcon" style="width: 20px; height: 20px;"></i>
+                    </button>
+                </div>
+
+                {% if cafe %}
+                <div style="display: flex; justify-content: center; margin-top: 8px; margin-bottom: 12px;">
+                    <button type="button" class="btn btn-primary btn-sm" onclick="savePasswordImmediately()" id="savePasswordNowBtn" style="font-size: 0.85rem; padding: 8px 24px; box-shadow: 0 4px 15px rgba(108, 99, 255, 0.35);">
+                        <i data-lucide="save" style="width: 15px; height: 15px;"></i> Şifreyi Kaydet & Güncelle
+                    </button>
+                </div>
+                {% endif %}
+
+                <div class="password-criteria" id="passwordCriteria">
+                    <div class="criteria-item" id="crit-length"><i data-lucide="circle" style="width: 10px; height: 10px;"></i> En az 8 karakter</div>
+                    <div class="criteria-item" id="crit-letter"><i data-lucide="circle" style="width: 10px; height: 10px;"></i> En az 1 harf</div>
+                    <div class="criteria-item" id="crit-number"><i data-lucide="circle" style="width: 10px; height: 10px;"></i> En az 1 rakam</div>
+                    <div class="criteria-item" id="crit-special"><i data-lucide="circle" style="width: 10px; height: 10px;"></i> En az 1 özel karakter</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="name">Kafe Adı (En fazla 25 karakter) *</label>
+            <input type="text" name="name" id="name" class="form-input"
+                   value="{{ cafe.name if cafe else '' }}"
+                   placeholder="Örn: Starbucks Kadıköy" maxlength="25" required>
+        </div>
+
+        <div class="business-section" style="margin-top: 20px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
+                <i data-lucide="qr-code" style="width: 20px; height: 20px; color: var(--primary-light);"></i>
+                <h3 style="font-size: 1rem; color: var(--primary-light); margin: 0;">İşletme QR Kodu Yönetimi</h3>
+            </div>
+
+            <div class="card" style="margin-bottom: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px;">
+                <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: 10px;">
+                    <div style="font-size: 0.8rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.5px;">
+                        <i data-lucide="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i>
+                        Mevcut Yayınlanan QR Kodu
+                    </div>
+                    {% if cafe and cafe.qr_code_path %}
+                    <img src="{{ url_for('static', filename=cafe.qr_code_path) }}" alt="Kafe QR Kodu" style="width: 160px; height: 160px; border-radius: 14px; border: 2px solid var(--border-color); background: #fff; padding: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+                    {% endif %}
+                    <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                        Mevcut QR Bağlantısı / Kodu: <strong style="color: var(--primary-light); font-family: var(--font-mono);">{{ cafe.qr_unique_slug if cafe else 'Henüz Atanmadı' }}</strong>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card" style="background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 18px; padding: 16px;">
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">
+                        Yeni QR Kod Kelimesi Belirle veya Üret
+                    </div>
+
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="qr_unique_slug" style="text-align: left;">Yeni QR Kod Kelimesi (Slug)</label>
+
+                        <input type="text" name="qr_unique_slug" id="qr_unique_slug" class="form-input" value="{{ cafe.qr_unique_slug if cafe else '' }}" placeholder="Örn: starbucks-kadikoy-2a318cf858c4" readonly style="width: 100%; font-family: var(--font-mono); font-size: 0.95rem; padding: 12px; margin-bottom: 12px; background: rgba(255,255,255,0.04); cursor: not-allowed;" required>
+
+                        <div style="display: flex; gap: var(--space-sm);">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="generateRandomSlug()" style="flex: 1; padding: 10px;">
+                                <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                                Rastgele Kod Üret
+                            </button>
+                            {% if cafe %}
+                            <button type="button" class="btn btn-primary btn-sm" onclick="saveQrImmediately()" style="flex: 1; padding: 10px; background: linear-gradient(135deg, #10b981, #059669); border: none;">
+                                <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                                Güncelle & Kaydet
+                            </button>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="qr-preview-box" style="margin-top: 8px; padding: 16px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-color); border-radius: 14px; text-align: center;">
+                        <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 10px; font-weight: 600;">Canlı Önizleme:</div>
+                        <div id="qrcodeCanvas" style="width: 140px; height: 140px; margin: 0 auto; display: flex; align-items: center; justify-content: center; background: #ffffff; border-radius: 14px; padding: 6px; box-shadow: 0 4px 15px rgba(0,0,0,0.2);"></div>
+                        <div id="qrUrlDisplay" style="font-size: 0.75rem; color: var(--primary-light); margin-top: 10px; font-family: var(--font-mono); font-weight: 600;"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label">Konum Seçimi *</label>
+
+            <div class="location-info waiting" id="locationInfo">
+                <i data-lucide="map-pin" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+                <span id="locationInfoText">Haritada kafenizin konumuna tıklayın veya butona basın.</span>
+            </div>
+
+            <div class="map-container" id="map"></div>
+
+            <button type="button" class="btn btn-outline btn-block mb-md" onclick="detectMyLocation()" id="detectLocationBtn">
+                <i data-lucide="crosshair" style="width: 16px; height: 16px;"></i>
+                Mevcut Konumu Algıla
+            </button>
+
+            <div style="display: flex; gap: var(--space-sm);">
+                <div style="flex: 1;">
+                    <label class="form-label" style="font-size: 0.75rem;">Enlem (Latitude)</label>
+                    <input type="text" name="latitude" id="latitude" class="form-input"
+                           value="{{ cafe.latitude if cafe else '41.00820000' }}" readonly style="background: var(--bg-hover); cursor: not-allowed; font-family: var(--font-mono);" required>
+                </div>
+                <div style="flex: 1;">
+                    <label class="form-label" style="font-size: 0.75rem;">Boylam (Longitude)</label>
+                    <input type="text" name="longitude" id="longitude" class="form-input"
+                           value="{{ cafe.longitude if cafe else '28.97840000' }}" readonly style="background: var(--bg-hover); cursor: not-allowed; font-family: var(--font-mono);" required>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="address">Adres</label>
+            <textarea name="address" id="address" class="form-input" rows="2" readonly style="background: var(--bg-hover); cursor: not-allowed;"
+                      placeholder="Haritada bir noktaya tıkladığınızda adres otomatik algılanır">{{ cafe.address if cafe else '' }}</textarea>
+        </div>
+
+        <div class="switch-card">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="width: 38px; height: 38px; border-radius: 12px; background: rgba(0, 230, 118, 0.15); display: flex; align-items: center; justify-content: center; color: var(--success); flex-shrink: 0;">
+                    <i data-lucide="power" style="width: 20px; height: 20px;"></i>
+                </div>
+                <div>
+                    <strong style="font-size: 0.9rem; color: var(--text-primary); display: block;">Kafe Yayın Durumu</strong>
+                    <span class="text-muted" style="font-size: 0.75rem;">Kafeyi aktif hale getirip müşterilerin sohbet odasına erişmesine izin verin.</span>
+                </div>
+            </div>
+            <label class="switch-toggle" title="Kafe Aktiflik Durumu">
+                <input type="checkbox" name="is_active" id="isActiveToggle" {% if not cafe or cafe.is_active %}checked{% endif %}>
+                <span class="slider"></span>
+            </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="saveCafeBtn">
+            {{ 'Güncelle' if cafe else 'Kafe Oluştur' }}
+        </button>
+
+        <div id="cafeFormMetaData"
+             data-has-coords="{{ 'true' if cafe else 'false' }}"
+             data-reset-password-url="{{ url_for('admin.reset_business_password', cafe_id=cafe.id) if cafe else '#' }}"
+             data-regenerate-qr-url="{{ url_for('admin.regenerate_qr', cafe_id=cafe.id) if cafe else '#' }}"
+             data-csrf-token="{{ csrf_token() }}"
+             style="display:none;"></div>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js">
+
+</script>
+<script>
+
+    lucide.createIcons();
+
+    const metaDataEl = document.getElementById('cafeFormMetaData');
+    const hasExistingCoords = metaDataEl ? (metaDataEl.getAttribute('data-has-coords') === 'true') : false;
+    const defaultLat = parseFloat(document.getElementById('latitude').value) || 41.0082;
+    const defaultLng = parseFloat(document.getElementById('longitude').value) || 28.9784;
+
+    const map = L.map('map').setView([defaultLat, defaultLng], hasExistingCoords ? 16 : 13);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+    }).addTo(map);
+
+    let marker = L.marker([defaultLat, defaultLng], { draggable: true }).addTo(map);
+
+    let qrRenderTimer = null;
+
+    function renderLiveQR() {
+        const slug = document.getElementById('qr_unique_slug').value.trim();
+        const container = document.getElementById('qrcodeCanvas');
+        const urlDisplay = document.getElementById('qrUrlDisplay');
+        if (!container) return;
+
+        if (!slug) {
+            container.innerHTML = '<span style="color: #888; font-size: 0.75rem;">Kafe adı bekleniyor...</span>';
+            urlDisplay.textContent = 'Kafe adı girilmedi';
+            return;
+        }
+
+        urlDisplay.textContent = '/cafe/' + slug;
+
+        if (qrRenderTimer) clearTimeout(qrRenderTimer);
+        qrRenderTimer = setTimeout(() => {
+            container.innerHTML = '';
+            const fullUrl = window.location.origin + '/cafe/' + encodeURIComponent(slug);
+            new QRCode(container, {
+                text: fullUrl,
+                width: 128,
+                height: 128,
+                colorDark: '#1a1a2e',
+                colorLight: '#ffffff',
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        }, 150);
+    }
+
+    function fetchAddress(lat, lng) {
+        document.getElementById('address').value = 'Adres sorgulanıyor...';
+        fetch(`https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lng}`)
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.display_name) {
+                    document.getElementById('address').value = data.display_name;
+                } else {
+                    document.getElementById('address').value = `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+                }
+            })
+            .catch(() => {
+                document.getElementById('address').value = `Koordinat: ${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            });
+    }
+
+    function updateMarker(lat, lng, getAddress = true) {
+        document.getElementById('latitude').value = lat.toFixed(8);
+        document.getElementById('longitude').value = lng.toFixed(8);
+        marker.setLatLng([lat, lng]);
+        map.setView([lat, lng], 16);
+
+        const info = document.getElementById('locationInfo');
+        const infoText = document.getElementById('locationInfoText');
+        info.className = 'location-info detected';
+        infoText.innerHTML = 'Konum seçildi: <span class="coord-display">' + lat.toFixed(6) + ', ' + lng.toFixed(6) + '</span>';
+
+        const btn = document.getElementById('detectLocationBtn');
+        btn.disabled = false;
+        btn.innerHTML = '<i data-lucide="crosshair" style="width: 16px; height: 16px;"></i> Mevcut Konumu Algıla';
+        lucide.createIcons();
+
+        if (getAddress) {
+            fetchAddress(lat, lng);
+        }
+    }
+
+    marker.on('dragend', () => {
+        const pos = marker.getLatLng();
+        updateMarker(pos.lat, pos.lng, true);
+    });
+
+    map.on('click', (e) => {
+        updateMarker(e.latlng.lat, e.latlng.lng, true);
+    });
+
+    function detectMyLocation() {
+        const btn = document.getElementById('detectLocationBtn');
+        const infoText = document.getElementById('locationInfoText');
+
+        btn.disabled = true;
+        btn.innerHTML = '<i data-lucide="loader" style="width: 16px; height: 16px;" class="spin"></i> Konum Alınıyor...';
+        lucide.createIcons();
+
+        function finishSuccess(lat, lng) {
+            updateMarker(lat, lng, true);
+        }
+
+        function fallbackIpGeo() {
+            fetch('https://get.geojs.io/v1/ip/geo.json')
+                .then(res => res.json())
+                .then(data => {
+                    const lat = parseFloat(data.latitude);
+                    const lng = parseFloat(data.longitude);
+                    if (!isNaN(lat) && !isNaN(lng)) {
+                        finishSuccess(lat, lng);
+                    } else {
+                        throw new Error('IP konumu geçersiz');
+                    }
+                })
+                .catch(() => {
+                    infoText.textContent = 'Konum servisleri yanıt vermedi. Haritada istediğiniz noktaya tıklayarak konumu seçebilirsiniz.';
+                    btn.disabled = false;
+                    btn.innerHTML = '<i data-lucide="crosshair" style="width: 16px; height: 16px;"></i> Mevcut Konumu Algıla';
+                    lucide.createIcons();
+                });
+        }
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    finishSuccess(pos.coords.latitude, pos.coords.longitude);
+                },
+                () => {
+                    fallbackIpGeo();
+                },
+                { enableHighAccuracy: false, timeout: 4000, maximumAge: 60000 }
+            );
+        } else {
+            fallbackIpGeo();
+        }
+    }
+
+    let currentSlugSuffix = '';
+
+    function getSlugSuffix() {
+        const qrInput = document.getElementById('qr_unique_slug');
+        if (!currentSlugSuffix && qrInput && qrInput.value) {
+            const val = qrInput.value.trim();
+            if (val.includes('-')) {
+                const parts = val.split('-');
+                const last = parts[parts.length - 1];
+                if (last.length >= 4 && /^[a-f0-9]+$/i.test(last)) {
+                    currentSlugSuffix = last;
+                }
+            }
+        }
+        if (!currentSlugSuffix) {
+            currentSlugSuffix = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+                .map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+        return currentSlugSuffix;
+    }
+
+    function syncSlugFromName() {
+        const nameVal = document.getElementById('name').value.trim().toLowerCase()
+            .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+            .replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '');
+
+        const qrInput = document.getElementById('qr_unique_slug');
+        if (!qrInput) return;
+
+        if (!nameVal) {
+            qrInput.value = '';
+        } else {
+            const suffix = getSlugSuffix();
+            qrInput.value = nameVal + '-' + suffix;
+        }
+        renderLiveQR();
+    }
+
+    function generateRandomSlug() {
+        currentSlugSuffix = Array.from(crypto.getRandomValues(new Uint8Array(6)))
+            .map(b => b.toString(16).padStart(2, '0')).join('');
+        syncSlugFromName();
+    }
+
+    function generateRandomCode() {
+        const rand = Math.floor(100000 + Math.random() * 900000);
+        document.getElementById('business_code').value = 'TLK-' + rand;
+    }
+
+    function togglePasswordVisibility() {
+        const pwdInput = document.getElementById('business_password');
+        const eyeIcon = document.getElementById('eyeIcon');
+        if (pwdInput.type === 'password') {
+            pwdInput.type = 'text';
+            if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye-off');
+        } else {
+            pwdInput.type = 'password';
+            if (eyeIcon) eyeIcon.setAttribute('data-lucide', 'eye');
+        }
+        lucide.createIcons();
+    }
+
+    function savePasswordImmediately() {
+        const pwdInput = document.getElementById('business_password');
+        const pwd = pwdInput.value.trim();
+        if (!pwd || pwd.length < 8) {
+            alert('Lütfen en az 8 karakter uzunluğunda geçerli bir şifre yazın.');
+            return;
+        }
+
+        const resetUrl = metaDataEl ? metaDataEl.getAttribute('data-reset-password-url') : '#';
+        const csrfTokenVal = metaDataEl ? metaDataEl.getAttribute('data-csrf-token') : '';
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = resetUrl;
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfTokenVal;
+        form.appendChild(csrfInput);
+
+        const pwdInputHidden = document.createElement('input');
+        pwdInputHidden.type = 'hidden';
+        pwdInputHidden.name = 'new_password';
+        pwdInputHidden.value = pwd;
+        form.appendChild(pwdInputHidden);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    function saveQrImmediately() {
+        const slugInput = document.getElementById('qr_unique_slug');
+        const slug = slugInput ? slugInput.value.trim() : '';
+        if (!slug) {
+            alert('Lütfen geçerli bir QR kod kelimesi üretin.');
+            return;
+        }
+
+        const regenUrl = metaDataEl ? metaDataEl.getAttribute('data-regenerate-qr-url') : '#';
+        const csrfTokenVal = metaDataEl ? metaDataEl.getAttribute('data-csrf-token') : '';
+
+        if (!regenUrl || regenUrl === '#') {
+            alert('Önce kafeyi oluşturmanız gerekmektedir.');
+            return;
+        }
+
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = regenUrl;
+
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = 'csrf_token';
+        csrfInput.value = csrfTokenVal;
+        form.appendChild(csrfInput);
+
+        const slugInputHidden = document.createElement('input');
+        slugInputHidden.type = 'hidden';
+        slugInputHidden.name = 'qr_slug';
+        slugInputHidden.value = slug;
+        form.appendChild(slugInputHidden);
+
+        document.body.appendChild(form);
+        form.submit();
+    }
+
+    const nameInput = document.getElementById('name');
+    if (nameInput) {
+        nameInput.addEventListener('input', syncSlugFromName);
+    }
+
+    const qrSlugInput = document.getElementById('qr_unique_slug');
+    if (qrSlugInput) {
+        qrSlugInput.addEventListener('input', renderLiveQR);
+    }
+
+    const bCodeInput = document.getElementById('business_code');
+    if (bCodeInput) {
+        if (!bCodeInput.value || !bCodeInput.value.startsWith('TLK-')) {
+            bCodeInput.value = 'TLK-' + (bCodeInput.value ? bCodeInput.value.replace(/^TLK-?/i, '') : '');
+        }
+        bCodeInput.addEventListener('input', () => {
+            let val = bCodeInput.value.toUpperCase();
+            if (!val.startsWith('TLK-')) {
+                val = 'TLK-' + val.replace(/^TLK-?/g, '').replace(/[^A-Z0-9\-]/g, '');
+            } else {
+                val = 'TLK-' + val.substring(4).replace(/[^A-Z0-9\-]/g, '');
+            }
+            bCodeInput.value = val;
+        });
+    }
+
+    const pwdInput = document.getElementById('business_password');
+    if (pwdInput) {
+        pwdInput.addEventListener('input', () => {
+            const v = pwdInput.value;
+            document.getElementById('crit-length').classList.toggle('valid', v.length >= 8);
+            document.getElementById('crit-letter').classList.toggle('valid', /[a-zA-Z]/.test(v));
+            document.getElementById('crit-number').classList.toggle('valid', /[0-9]/.test(v));
+            document.getElementById('crit-special').classList.toggle('valid', /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?~`]/.test(v));
+        });
+    }
+
+    if (hasExistingCoords) {
+        updateMarker(defaultLat, defaultLng, false);
+    } else {
+        generateRandomCode();
+    }
+
+    syncSlugFromName();
+
+</script>
+{% endblock %}

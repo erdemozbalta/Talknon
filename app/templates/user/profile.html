@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Profil') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">{{ t('Profil') }}</h1>
+    </div>
+
+    <div class="profile-header">
+        <div class="profile-photo-wrapper">
+            {% if user.profile_photo %}
+            <img src="{{ url_for('static', filename=user.profile_photo) }}" class="profile-photo" alt="Profil" id="profilePhoto">
+            {% else %}
+            <div class="avatar avatar-lg" style="width: 100px; height: 100px; font-size: 2.5rem; border: 3px solid var(--primary);">
+                {{ (user.first_name or user.phone_number)[0]|upper }}
+            </div>
+            {% endif %}
+        </div>
+        <div class="profile-name">
+            {{ user.first_name or '' }} {{ user.last_name or '' }}
+        </div>
+        <div class="profile-phone">{{ user.phone_number }}</div>
+        {% if user.bio %}
+        <div style="margin-top: 10px; display: flex; justify-content: center;">
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 8px 16px; max-width: 300px; text-align: center;">
+                <p style="margin: 0; font-size: 0.84rem; font-weight: 500; color: var(--text-secondary); line-height: 1.4; word-break: break-word;">
+                    {{ user.bio }}
+                </p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <a href="{{ url_for('user.edit_profile') }}" class="btn btn-primary btn-block mb-lg" id="editProfileBtn">
+        <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i> {{ t('Profili Düzenle') }}
+    </a>
+
+    <div class="settings-group">
+        <div class="settings-group-title">{{ t('Hesap') }}</div>
+        <a href="{{ url_for('user.change_nickname') }}" class="settings-item" style="text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;">
+            <div class="settings-item-left" style="display: flex; align-items: center; gap: 12px;">
+                <div class="settings-item-icon" style="flex-shrink: 0;"><i data-lucide="user-check" style="width: 18px; height: 18px; color: #3b82f6;"></i></div>
+                <span class="settings-item-label" style="font-weight: 600;">{{ t('Anonim Takma Ad Değiştir') }}</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+        </a>
+        <a href="{{ url_for('user.settings') }}" class="settings-item" style="text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;">
+            <div class="settings-item-left" style="display: flex; align-items: center; gap: 12px;">
+                <div class="settings-item-icon" style="flex-shrink: 0;"><i data-lucide="settings" style="width: 18px; height: 18px; color: #3b82f6;"></i></div>
+                <span class="settings-item-label" style="font-weight: 600;">{{ t('Ayarlar') }}</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+        </a>
+        <a href="{{ url_for('user.help_page') }}" class="settings-item" style="text-decoration: none; color: inherit; display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 16px;">
+            <div class="settings-item-left" style="display: flex; align-items: center; gap: 12px;">
+                <div class="settings-item-icon" style="flex-shrink: 0;"><i data-lucide="help-circle" style="width: 18px; height: 18px; color: #3b82f6;"></i></div>
+                <span class="settings-item-label" style="font-weight: 600;">{{ t('Yardım & Destek') }}</span>
+            </div>
+            <i data-lucide="chevron-right" style="width: 16px; height: 16px; color: var(--text-muted);"></i>
+        </a>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,246 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Kullanıcı Yönetimi') }} — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">{{ t('Kullanıcı Yönetimi') }}</h1>
+    </div>
+
+    <div class="user-controls-bar">
+        <form method="GET" action="{{ url_for('admin.users') }}" class="user-search-form">
+            <input type="text" name="q" class="user-search-input" value="{{ search_q or '' }}" placeholder="{{ t('İsim veya telefon numarası ara...') }}">
+            <button type="submit" class="btn btn-primary btn-sm" style="border-radius: 12px; padding: 0 16px; display: inline-flex; align-items: center; gap: 6px;">
+                <i data-lucide="search" style="width: 14px; height: 14px;"></i>
+                {{ t('Ara') }}
+            </button>
+        </form>
+    </div>
+
+    {% for user in users.items %}
+    {% set is_user_banned = user.is_banned() %}
+    {% set active_cafe_bans = user.get_active_cafe_bans() %}
+    <div class="user-card-item" id="userCard-{{ user.id }}">
+        <div style="display: flex; align-items: center; gap: 14px; flex: 1; min-width: 0;">
+            <div class="user-avatar-circle" style="overflow: hidden; display: flex; align-items: center; justify-content: center; background: rgba(99, 102, 241, 0.15); border: 1px solid rgba(99, 102, 241, 0.3);">
+                {% if user.profile_photo %}
+                <img src="{{ url_for('static', filename=user.profile_photo) }}" alt="{{ user.display_name }}" style="width: 100%; height: 100%; object-fit: cover;">
+                {% else %}
+                <div style="font-weight: 800; font-size: 1rem; color: var(--primary-light);">{{ user.display_name[0]|upper if user.display_name else 'U' }}</div>
+                {% endif %}
+            </div>
+
+            <div class="user-info-col">
+                <div class="user-name-row">
+                    <strong style="font-weight: 700; font-size: 0.98rem; color: #ffffff;">
+                        {{ user.display_name }}
+                    </strong>
+
+                    {% if is_user_banned %}
+                        {% if user.status == 'banned' %}
+                        <span class="badge badge-danger" style="font-size: 0.7rem; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="shield-alert" style="width: 12px; height: 12px;"></i>
+                            {{ t('Sistem Genel Banı (Kalıcı)') }}
+                        </span>
+                        {% else %}
+                        <span class="badge badge-warning" style="font-size: 0.7rem; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="clock" style="width: 12px; height: 12px;"></i>
+                            {{ t('Sistem Genel Banı (Süreli)') }}
+                        </span>
+                        {% endif %}
+                    {% endif %}
+
+                    {% if active_cafe_bans %}
+                        {% for cb in active_cafe_bans %}
+                        <span class="badge" style="font-size: 0.7rem; padding: 3px 9px; background: rgba(245, 158, 11, 0.15); color: #f59e0b; border: 1px solid rgba(245, 158, 11, 0.3); display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="store" style="width: 12px; height: 12px;"></i>
+                            {{ t('Kafeden Banlı') }}: {{ cb.cafe.name if cb.cafe else 'Kafe' }} ({{ 'Kalıcı' if cb.ban_type == 'permanent' else 'Süreli' }})
+                        </span>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% if not is_user_banned and not active_cafe_bans %}
+                        <span class="badge badge-success" style="font-size: 0.72rem; padding: 3px 9px; display: inline-flex; align-items: center; gap: 4px;">
+                            <i data-lucide="check-circle" style="width: 12px; height: 12px;"></i>
+                            {{ t('Aktif') }}
+                        </span>
+                    {% endif %}
+                </div>
+
+                <div class="user-details-row">
+                    {% if user.display_phone != 'Anonim Kullanıcı' %}
+                    <span class="text-muted" style="font-family: var(--font-mono); color: var(--primary-light); display: inline-flex; align-items: center; gap: 5px;">
+                        <i data-lucide="phone" style="width: 13px; height: 13px;"></i>
+                        {{ user.display_phone }}
+                    </span>
+                    {% endif %}
+                    <span class="text-muted" style="display: inline-flex; align-items: center; gap: 5px; font-size: 0.78rem;">
+                        <i data-lucide="calendar" style="width: 13px; height: 13px;"></i>
+                        {{ t('Kayıt') }}: {{ user.created_at.strftime('%d.%m.%Y') if user.created_at else '-' }}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="user-actions-group">
+            {% if not is_user_banned %}
+            <button type="button" class="btn-action-ban-icon" data-user-id="{{ user.id }}" data-user-name="{{ user.display_name }}" onclick="triggerBanModalFromEl(this)" title="{{ t('Kullanıcıyı Yasakla') }}">
+                <i data-lucide="ban" style="width: 16px; height: 16px;"></i>
+            </button>
+            {% else %}
+            <a href="{{ url_for('admin.bans_list') }}" class="btn-action-unban-icon" title="{{ t('Yasaklar Sekmesine Git & Banı Yönet') }}">
+                <i data-lucide="shield-alert" style="width: 16px; height: 16px;"></i>
+            </a>
+            {% endif %}
+
+            {% if user.id != current_user.id %}
+            <button type="button" class="btn-action-delete" data-user-id="{{ user.id }}" data-user-name="{{ user.display_name }}" onclick="triggerDeleteModal(this)" title="{{ t('Kullanıcıyı Sil') }}">
+                <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+            </button>
+            {% endif %}
+        </div>
+    </div>
+    {% endfor %}
+
+    {% if not users.items %}
+    <div class="card text-center" style="padding: var(--space-xl); border-radius: 20px;">
+        <div style="width: 56px; height: 56px; border-radius: 16px; background: rgba(99, 102, 241, 0.1); color: var(--primary-light); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px auto;">
+            <i data-lucide="users" style="width: 28px; height: 28px;"></i>
+        </div>
+        <h3 style="font-size: 1.15rem; color: var(--text-primary); margin-bottom: 4px;">{{ t('Kullanıcı Bulunamadı') }}</h3>
+        <p class="text-muted" style="font-size: 0.85rem;">{{ t('Arama kriterlerinize uygun hiçbir kullanıcı kaydı bulunamadı.') }}</p>
+    </div>
+    {% endif %}
+
+    {% if users.has_prev or users.has_next %}
+    <div class="pagination">
+        {% if users.has_prev %}<a href="{{ url_for('admin.users', page=users.prev_num, q=search_q) }}">Önceki</a>{% endif %}
+        <span class="active">{{ users.page }} / {{ users.pages }}</span>
+        {% if users.has_next %}<a href="{{ url_for('admin.users', page=users.next_num, q=search_q) }}">Sonraki</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+<div class="action-modal-overlay" id="banActionModal">
+    <div class="action-modal-card" style="max-width: 320px; padding: 18px 20px; border-radius: 20px;">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;">
+            <div style="font-weight: 800; font-size: 0.95rem; color: #f43f5e; display: flex; align-items: center; gap: 6px;">
+                <i data-lucide="shield-alert" style="width: 18px; height: 18px;"></i>
+                <span>{{ t('Ban Süresi Seçin') }}</span>
+            </div>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="closeBanModal()" style="padding: 2px 6px;">
+                <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+            </button>
+        </div>
+
+        <form method="POST" id="banActionForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 10px;">
+                <strong id="banTargetName" style="color: #ffffff;">Kullanıcı</strong> {{ t('hesabı tüm kafelerden yasaklanacak:') }}
+            </div>
+
+            <div class="form-group" style="margin-bottom: 10px;">
+                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 4px;">{{ t('Süre') }}</label>
+                <select name="duration" class="form-input" style="font-size: 0.82rem; padding: 8px 10px;">
+                    <option value="1">1 {{ t('Saat') }}</option>
+                    <option value="5">5 {{ t('Saat') }}</option>
+                    <option value="12">12 {{ t('Saat') }}</option>
+                    <option value="24" selected>1 {{ t('Gün (24 Saat)') }}</option>
+                    <option value="168">7 {{ t('Gün (1 Hafta)') }}</option>
+                    <option value="permanent">{{ t('Sınırsız / Kalıcı Ban') }}</option>
+                </select>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 14px;">
+                <label class="form-label" style="font-size: 0.75rem; margin-bottom: 4px;">{{ t('Yasaklama Nedeni *') }}</label>
+                <input type="text" name="reason" class="form-input" placeholder="{{ t('Örn: Uygunsuz davranış') }}" style="font-size: 0.8rem; padding: 8px 10px;" required>
+            </div>
+
+            <button type="submit" class="btn btn-danger btn-block" style="border-radius: 12px; background: linear-gradient(135deg, #e11d48, #f43f5e); padding: 10px; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                <i data-lucide="ban" style="width: 14px; height: 14px;"></i>
+                {{ t('Yasaklamayı Onayla') }}
+            </button>
+        </form>
+    </div>
+</div>
+
+<div class="action-modal-overlay" id="deleteConfirmModal">
+    <div class="action-modal-card" style="max-width: 320px; padding: 20px 18px; border-radius: 20px; text-align: center;">
+        <div style="width: 48px; height: 48px; border-radius: 14px; background: rgba(244, 63, 94, 0.15); border: 1px solid rgba(244, 63, 94, 0.3); color: #f43f5e; display: inline-flex; align-items: center; justify-content: center; margin-bottom: 12px;">
+            <i data-lucide="alert-triangle" style="width: 24px; height: 24px;"></i>
+        </div>
+
+        <h3 style="font-size: 1.05rem; font-weight: 800; color: #ffffff; margin-bottom: 6px;">
+            {{ t('Kullanıcıyı Sil') }}
+        </h3>
+
+        <p style="font-size: 0.82rem; color: var(--text-secondary); line-height: 1.45; margin-bottom: 18px;">
+            <strong id="deleteTargetName" style="color: #ffffff;">Kullanıcı</strong> {{ t('adlı hesabı ve tüm verilerini kalıcı olarak silmek istediğinize emin misiniz?') }}
+        </p>
+
+        <form method="POST" id="deleteActionForm" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div style="display: flex; gap: 8px;">
+                <button type="button" class="btn btn-outline" onclick="closeDeleteModal()" style="flex: 1; border-radius: 12px; padding: 9px; font-weight: 700; font-size: 0.82rem;">
+                    {{ t('Hayır, Vazgeç') }}
+                </button>
+                <button type="submit" class="btn btn-danger" style="flex: 1; border-radius: 12px; background: linear-gradient(135deg, #e11d48, #f43f5e); padding: 9px; font-weight: 700; font-size: 0.82rem; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+                    <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                    {{ t('Evet, Sil') }}
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    function triggerBanModalFromEl(el) {
+        const userId = parseInt(el.getAttribute('data-user-id'));
+        const userName = el.getAttribute('data-user-name');
+        openBanModal(userId, userName);
+    }
+
+    function openBanModal(userId, name) {
+        document.getElementById('banTargetName').textContent = name || ('Kullanıcı #' + userId);
+        document.getElementById('banActionForm').action = '/admin/users/' + userId + '/ban';
+        document.getElementById('banActionModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeBanModal() {
+        document.getElementById('banActionModal').classList.remove('active');
+    }
+
+    function triggerDeleteModal(el) {
+        const userId = parseInt(el.getAttribute('data-user-id'));
+        const userName = el.getAttribute('data-user-name');
+        document.getElementById('deleteTargetName').textContent = userName || ('Kullanıcı #' + userId);
+        document.getElementById('deleteActionForm').action = '/admin/users/' + userId + '/delete';
+        document.getElementById('deleteConfirmModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeDeleteModal() {
+        document.getElementById('deleteConfirmModal').classList.remove('active');
+    }
+
+    document.querySelectorAll('.action-modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                this.classList.remove('active');
+            }
+        });
+    });
+
+</script>
+{% endblock %}

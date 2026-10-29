@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}Genel İstatistikler & Kafe Analizleri — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">Platform İstatistikleri</h1>
+    </div>
+
+    <div class="stat-overview-grid mt-md">
+        <div class="stat-box">
+            <div class="stat-box-val text-gradient">{{ total_users }}</div>
+            <div class="stat-box-lbl">Toplam Müşteri</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-val" style="color: var(--accent);">{{ total_messages }}</div>
+            <div class="stat-box-lbl">Sohbet Mesajı</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-val" style="color: var(--warning);">{{ total_matches }}</div>
+            <div class="stat-box-lbl">Eşleşme (Match)</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-box-val" style="color: var(--info);">{{ active_sessions }}</div>
+            <div class="stat-box-lbl">Aktif Oturum</div>
+        </div>
+    </div>
+
+    <div style="margin-bottom: var(--space-md);">
+        <h3 style="font-size: 1rem; font-weight: 700; color: var(--text-primary); display: flex; align-items: center; gap: 8px;">
+            <i data-lucide="coffee" style="width: 18px; height: 18px; color: var(--primary-light);"></i>
+            Kafe İstatistik Detayları
+        </h3>
+        <p class="text-muted" style="font-size: 0.8rem;">Detaylı kafe raporlarını ve canlı sohbet izlemesini görmek için kafeye tıklayın.</p>
+    </div>
+
+    {% for item in cafe_stats_list %}
+    <a href="{{ url_for('admin.cafe_detail', cafe_id=item.cafe.id) }}" class="cafe-stat-item" id="cafeStat-{{ item.cafe.id }}">
+        <div style="flex: 1; min-width: 0; padding-right: 12px;">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                <span style="font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    {{ item.cafe.name }}
+                </span>
+                {% if item.cafe.is_active %}
+                    <span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0;">Aktif</span>
+                {% else %}
+                    <span class="badge badge-danger" style="font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0;">Pasif</span>
+                {% endif %}
+            </div>
+            <div style="font-size: 0.75rem; color: var(--text-muted); font-family: var(--font-mono);">
+                Kod: {{ item.cafe.business_code or 'Yok' }}
+            </div>
+        </div>
+        <div style="display: flex; align-items: center; gap: var(--space-md); text-align: right;">
+            <div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--primary-light); font-family: var(--font-mono);">
+                    {{ item.total_messages }}
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-muted);">Mesaj</div>
+            </div>
+            <div>
+                <div style="font-size: 0.85rem; font-weight: 700; color: var(--success); font-family: var(--font-mono);">
+                    {{ item.active_users }}
+                </div>
+                <div style="font-size: 0.65rem; color: var(--text-muted);">Çevrim İçi</div>
+            </div>
+            <i data-lucide="chevron-right" style="width: 18px; height: 18px; color: var(--text-muted);"></i>
+        </div>
+    </a>
+    {% endfor %}
+
+    {% if not cafe_stats_list %}
+    <div class="empty-state">
+        <div class="empty-state-icon"><i data-lucide="coffee" style="width: 48px; height: 48px;"></i></div>
+        <p class="text-muted">Henüz kayıtlı kafe bulunmuyor.</p>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

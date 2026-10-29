@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Sohbet Logları — {{ cafe.name }}{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ cafe.name }} Logları</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div style="margin-top: var(--space-lg);">
+        {% for msg in messages.items %}
+        <div class="card {% if msg.is_deleted %}is-deleted-log{% endif %}" style="padding: var(--space-sm) var(--space-md); margin-bottom: 2px; border-radius: 0;">
+            <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+                <div style="flex: 1;">
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); margin-bottom: 2px;">
+                        <strong style="color: var(--primary-light); font-size: 0.8rem;">{{ msg.sender_session.nickname }}</strong>
+                        <span class="text-muted" style="font-size: 0.7rem;">{{ msg.created_at.strftime('%d/%m %H:%M:%S') }}</span>
+                        {% if msg.message_type == 'system' %}
+                        <span class="badge badge-primary" style="font-size: 0.6rem;">sistem</span>
+                        {% endif %}
+                    </div>
+                    <p style="font-size: 0.85rem;">
+                        {{ msg.content }}
+                    </p>
+                </div>
+                {% if not msg.is_deleted %}
+                <form method="POST" action="{{ url_for('admin.delete_message', message_id=msg.id) }}" style="margin: 0;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="message-action-btn report" style="opacity: 0.6;" title="Mesajı Sil">
+                        <i data-lucide="trash-2" style="width: 12px; height: 12px;"></i>
+                    </button>
+                </form>
+                {% endif %}
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    {% if messages.has_prev or messages.has_next %}
+    <div class="pagination">
+        {% if messages.has_prev %}<a href="{{ url_for('admin.cafe_logs', cafe_id=cafe.id, page=messages.prev_num) }}">Yeni</a>{% endif %}
+        <span class="active">{{ messages.page }} / {{ messages.pages }}</span>
+        {% if messages.has_next %}<a href="{{ url_for('admin.cafe_logs', cafe_id=cafe.id, page=messages.next_num) }}">Eski</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}{{ t('İstatistikler') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="display: flex; align-items: center; justify-content: space-between; position: relative;">
+        <div style="width: 40px;"></div>
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center; flex: 1;">{{ t('İstatistikler') }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <div class="admin-grid" style="margin-top: var(--space-lg);">
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--success);">{{ total_stats.total_sessions }}</div>
+            <div class="stat-label">{{ t('Toplam Oturum') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--accent);">{{ stats.total_messages if stats else total_stats.total_messages }}</div>
+            <div class="stat-label">{{ t('Toplam Mesaj') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--info);">{{ total_stats.total_matches }}</div>
+            <div class="stat-label">{{ t('Toplam Match') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--warning);">{{ total_stats.total_reports }}</div>
+            <div class="stat-label">{{ t('Toplam Rapor') }}</div>
+        </div>
+    </div>
+
+    <div class="admin-section">
+        <div class="admin-section-title">{{ t('Günlük Detay') }} (Son {{ days }} {{ t('gün') }})</div>
+
+        <div class="filter-bar">
+            <a href="{{ url_for('business.stats', days=7) }}" class="filter-btn {% if days == 7 %}active{% endif %}">7 {{ t('gün') }}</a>
+            <a href="{{ url_for('business.stats', days=14) }}" class="filter-btn {% if days == 14 %}active{% endif %}">14 {{ t('gün') }}</a>
+            <a href="{{ url_for('business.stats', days=30) }}" class="filter-btn {% if days == 30 %}active{% endif %}">30 {{ t('gün') }}</a>
+        </div>
+
+        {% for stat in daily_stats %}
+        <div class="card" style="padding: var(--space-sm) var(--space-md); margin-bottom: 2px; border-radius: var(--radius-sm);">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 600; font-size: 0.9rem;">{{ stat.stat_date.strftime('%d %b %Y') }}</span>
+                <div style="display: flex; gap: var(--space-md); font-size: 0.85rem;">
+                    <span title="Oturum">{{ stat.total_sessions }} {{ t('oturum') }}</span>
+                    <span title="Mesaj">{{ stat.total_messages }} {{ t('mesaj') }}</span>
+                    <span title="Match">{{ stat.total_matches }} {{ t('eşleşme') }}</span>
+                    <span title="Rapor">{{ stat.total_reports }} {{ t('rapor') }}</span>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not daily_stats %}
+        <div class="empty-state">
+            <p class="empty-state-text">{{ t('Bu dönem için veri yok.') }}</p>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% block title %}Giriş Yap — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-brand">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Talknon Logo" class="auth-brand-img">
+        <div class="auth-logo">Talknon</div>
+        <p class="auth-subtitle">Anonim sohbet et, eşleş</p>
+    </div>
+
+    <div class="auth-card">
+        <h2>Giriş Yap</h2>
+
+        <form method="POST" action="{{ url_for('auth.login') }}" id="loginForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label" for="phone_number">Telefon Numarası</label>
+                <div class="phone-input-group">
+                    <span class="phone-prefix">+90</span>
+                    <input type="tel" name="phone_number" id="phone_number"
+                           class="form-input phone-input"
+                           placeholder="5XX XXX XX XX"
+                           pattern="[0-9]*" inputmode="numeric"
+                           maxlength="10" required autofocus>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">Şifre</label>
+                <div class="password-input-group">
+                    <input type="password" name="password" id="password"
+                           class="form-input"
+                           placeholder="Şifrenizi girin"
+                           minlength="6" required>
+                    <button type="button" class="password-toggle-btn" data-target="password" aria-label="Şifreyi Göster/Gizle" title="Şifreyi Göster/Gizle" tabindex="-1">
+                        <i data-lucide="eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="loginBtn" style="box-shadow: 0 8px 25px rgba(108, 99, 255, 0.35);">
+                <i data-lucide="log-in" style="width: 18px; height: 18px;"></i> Giriş Yap
+            </button>
+        </form>
+
+        <div class="auth-divider">veya</div>
+
+        <a href="{{ url_for('auth.register') }}" class="btn btn-outline btn-block" id="goToRegister">
+            Yeni Hesap Oluştur
+        </a>
+    </div>
+
+    <p class="auth-footer">
+        Talknon &copy; 2026 • Tüm hakları saklıdır.
+    </p>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

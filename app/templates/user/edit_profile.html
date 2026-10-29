@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% block title %}{{ t('Profili Düzenle') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <a href="{{ url_for('user.profile') }}" class="top-bar-action" id="backBtn">
+            <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+        </a>
+        <h1 class="top-bar-title">{{ t('Profili Düzenle') }}</h1>
+        <div style="width: 40px;"></div>
+    </div>
+
+    <form method="POST" action="{{ url_for('user.edit_profile') }}" enctype="multipart/form-data" style="margin-top: var(--space-lg);" id="editProfileForm">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+        <div class="form-group" style="text-align: center;">
+            <div class="profile-photo-wrapper">
+                {% if user.profile_photo %}
+                <img src="{{ url_for('static', filename=user.profile_photo) }}" class="profile-photo" alt="Profil" id="photoPreview">
+                {% else %}
+                <div class="avatar avatar-lg" style="width: 100px; height: 100px; font-size: 2.5rem;" id="photoPreview">
+                    {{ (user.first_name or user.phone_number)[0]|upper }}
+                </div>
+                {% endif %}
+                <label for="profile_photo" class="profile-photo-edit">📷</label>
+            </div>
+            <input type="file" name="profile_photo" id="profile_photo" accept="image/*" style="display: none;">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="first_name">{{ t('Ad') }}</label>
+            <input type="text" name="first_name" id="first_name" class="form-input"
+                   value="{{ user.first_name or '' }}" placeholder="{{ t('Adınız') }}">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="last_name">{{ t('Soyad') }}</label>
+            <input type="text" name="last_name" id="last_name" class="form-input"
+                   value="{{ user.last_name or '' }}" placeholder="{{ t('Soyadınız') }}">
+        </div>
+
+        <div class="form-group">
+            <label class="form-label" for="bio">{{ t('Biyografi') }}</label>
+            <textarea name="bio" id="bio" class="form-input" rows="3"
+                      placeholder="{{ t('Kendinizden bahsedin...') }}" maxlength="500">{{ user.bio or '' }}</textarea>
+        </div>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" id="saveProfileBtn">
+            <i data-lucide="save" style="width: 16px; height: 16px;"></i> {{ t('Kaydet') }}
+        </button>
+    </form>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+    document.getElementById('profile_photo').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const preview = document.getElementById('photoPreview');
+                if (preview.tagName === 'IMG') {
+                    preview.src = e.target.result;
+                } else {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.className = 'profile-photo';
+                    img.id = 'photoPreview';
+                    preview.replaceWith(img);
+                }
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+
+</script>
+{% endblock %}

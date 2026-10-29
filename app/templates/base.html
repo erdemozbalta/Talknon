@@ -1,0 +1,386 @@
+<!DOCTYPE html>
+<html lang="{{ get_lang() }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="description" content="Talknon — Kafelerde anonim sohbet, tanışma ve eşleşme platformu">
+    <meta name="theme-color" content="#141520">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>{% block title %}Talknon{% endblock %}</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@700;800;900&family=Plus+Jakarta+Sans:wght@700;800;900&display=swap" rel="stylesheet">
+
+    <script src="https://unpkg.com/lucide@0.344.0/dist/umd/lucide.min.js">
+
+</script>
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/variables.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js">
+
+</script>
+</head>
+<body data-authenticated="{% if current_user and current_user.is_authenticated %}true{% else %}false{% endif %}">
+    <div class="app-container" id="app">
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class="flash-messages" id="flashMessages">
+            {% for category, message in messages %}
+            <div class="flash-message {{ category }}" onclick="this.remove()">
+                {{ t(message) }}
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        {% block content %}{% endblock %}
+
+        {% if current_user.is_authenticated %}
+        {% block navbar %}
+        <nav class="bottom-nav" id="bottomNav">
+            {% if current_user.role == 'admin' %}
+                <a href="{{ url_for('admin.cafes') }}" class="nav-item {% if '/admin/cafes' in request.path %}active{% endif %}" id="nav-cafes">
+                    <i data-lucide="coffee" class="nav-icon-svg"></i>
+                    <span>Kafeler</span>
+                </a>
+                <a href="{{ url_for('admin.users') }}" class="nav-item {% if '/admin/users' in request.path %}active{% endif %}" id="nav-users">
+                    <i data-lucide="users" class="nav-icon-svg"></i>
+                    <span>Kullanıcılar</span>
+                </a>
+                <a href="{{ url_for('admin.bans_list') }}" class="nav-item {% if '/admin/bans' in request.path %}active{% endif %}" id="nav-bans">
+                    <i data-lucide="shield-alert" class="nav-icon-svg"></i>
+                    <span>Güvenlik</span>
+                </a>
+                <a href="{{ url_for('admin.stats') }}" class="nav-item {% if '/admin/stats' in request.path or request.path == '/admin/' %}active{% endif %}" id="nav-stats">
+                    <i data-lucide="bar-chart-3" class="nav-icon-svg"></i>
+                    <span>İstatistikler</span>
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-item" id="nav-logout" style="color: var(--danger);" title="Çıkış Yap">
+                    <i data-lucide="log-out" class="nav-icon-svg"></i>
+                    <span>Çıkış</span>
+                </a>
+            {% elif current_user.role == 'business' %}
+                <a href="{{ url_for('business.dashboard') }}" class="nav-item {% if request.path == '/business/' %}active{% endif %}" id="nav-dashboard">
+                    <i data-lucide="layout-dashboard" class="nav-icon-svg"></i>
+                    <span>Panel</span>
+                </a>
+                <a href="{{ url_for('business.chat_monitor') }}" class="nav-item {% if '/business/chat' in request.path or request.path.startswith('/cafe') %}active{% endif %}" id="nav-chat">
+                    <i data-lucide="message-circle" class="nav-icon-svg"></i>
+                    <span>Sohbet</span>
+                </a>
+                {% set pending_reports = get_pending_reports_count() %}
+                <a href="{{ url_for('business.reports') }}" class="nav-item {% if '/business/reports' in request.path %}active{% endif %}" id="nav-reports">
+                    <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
+                        <i data-lucide="flag" class="nav-icon-svg"></i>
+                        {% if pending_reports > 0 %}
+                        <span class="nav-red-dot" id="navReportsRedDot" title="{{ pending_reports }} {{ t('bekleyen rapor') }}">{{ pending_reports if pending_reports < 10 else '9+' }}</span>
+                        {% else %}
+                        <span class="nav-red-dot" id="navReportsRedDot" style="display: none;" title="0 {{ t('bekleyen rapor') }}">0</span>
+                        {% endif %}
+                    </div>
+                    <span>Raporlar</span>
+                </a>
+                <a href="{{ url_for('business.bans_list') }}" class="nav-item {% if '/business/bans' in request.path %}active{% endif %}" id="nav-bans">
+                    <i data-lucide="shield-alert" class="nav-icon-svg"></i>
+                    <span>Güvenlik</span>
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-item" id="nav-logout-biz" style="color: var(--danger);" title="Çıkış Yap">
+                    <i data-lucide="log-out" class="nav-icon-svg"></i>
+                    <span>Çıkış</span>
+                </a>
+            {% else %}
+                <a href="{% if current_user and current_user.active_session and current_user.active_session() %}{{ url_for('chat.room', slug=current_user.active_session().cafe.qr_unique_slug) }}{% else %}{{ url_for('chat.index') }}{% endif %}" class="nav-item {% if request.path == '/' or request.path.startswith('/cafe') %}active{% endif %}" id="nav-chat">
+                    <i data-lucide="coffee" class="nav-icon-svg"></i>
+                    <span>{{ t('Kafe Sohbet') }}</span>
+                </a>
+                {% set notif_count = get_unread_notifications_count() %}
+                <a href="{{ url_for('dm.dm_list') }}" class="nav-item {% if request.path.startswith('/dm') %}active{% endif %}" id="nav-dm">
+                    <div style="position: relative; display: inline-flex; align-items: center; justify-content: center;">
+                        <i data-lucide="message-circle" class="nav-icon-svg"></i>
+                        {% if notif_count > 0 %}
+                        <span class="nav-red-dot" id="navRedDot" title="{{ notif_count }} {{ t('yeni bildirim') }}">{{ notif_count if notif_count < 10 else '9+' }}</span>
+                        {% else %}
+                        <span class="nav-red-dot" id="navRedDot" style="display: none;" title="0 {{ t('yeni bildirim') }}">0</span>
+                        {% endif %}
+                    </div>
+                    <span>{{ t('Mesaj & İstekler') }}</span>
+                </a>
+                <a href="{{ url_for('user.profile') }}" class="nav-item {% if request.path.startswith('/profile') %}active{% endif %}" id="nav-profile">
+                    <i data-lucide="user" class="nav-icon-svg"></i>
+                    <span>{{ t('Profil') }}</span>
+                </a>
+                <a href="{{ url_for('auth.logout') }}" class="nav-item" id="nav-logout-user" style="color: var(--danger);" title="{{ t('Çıkış Yap') }}">
+                    <i data-lucide="log-out" class="nav-icon-svg"></i>
+                    <span>{{ t('Çıkış') }}</span>
+                </a>
+            {% endif %}
+        </nav>
+        {% endblock %}
+        {% endif %}
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}">
+
+</script>
+    <script>
+
+        window.CURRENT_LANG = "{{ get_lang() }}";
+        window.t = function(key) {
+            if (!key) return '';
+            if (window.CURRENT_LANG === 'en') {
+                const enMap = {
+                    'Kafeden ayrıldığınız için sohbetten çıkarıldınız.': 'You left the chat because you exited the cafe.',
+                    'Sohbetten ayrıldınız.': 'You left the chat.',
+                    'Sohbete katıldınız.': 'You joined the chat.',
+                    'Eşleşme kabul edildi!': 'Match accepted!',
+                    'Eşleşme isteği reddedildi.': 'Match request rejected.',
+                    'Bir hata oluştu. Lütfen tekrar deneyin.': 'An error occurred. Please try again.',
+                    'Görsel boyutu yüksek': 'Image file size is too high'
+                };
+                if (enMap[key]) return enMap[key];
+            }
+            return key;
+        };
+
+        document.addEventListener('DOMContentLoaded', () => {
+            if (window.lucide && typeof window.lucide.createIcons === 'function') {
+                window.lucide.createIcons();
+            }
+
+            const flashContainer = document.getElementById('flashMessages');
+            if (flashContainer) {
+                const msgs = flashContainer.querySelectorAll('.flash-message');
+                const seenTexts = new Set();
+                msgs.forEach(msg => {
+                    const txt = msg.textContent.trim();
+                    if (seenTexts.has(txt)) {
+                        msg.remove();
+                        return;
+                    }
+                    seenTexts.add(txt);
+                    setTimeout(() => {
+                        msg.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                        msg.style.opacity = '0';
+                        msg.style.transform = 'translateY(15px)';
+                        setTimeout(() => msg.remove(), 300);
+                    }, 3500);
+                });
+            }
+        });
+
+        window.showToast = function(message, type = 'info') {
+            if (!message) return;
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.className = 'top-toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `toast-notification ${type === 'error' ? 'toast-error' : (type === 'success' ? 'toast-success' : '')}`;
+            const translatedMsg = (typeof window.t === 'function') ? window.t(message) : message;
+            toast.innerHTML = `<span>${translatedMsg}</span>`;
+
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+                toast.style.opacity = '0';
+                toast.style.transform = 'translateY(15px)';
+                setTimeout(() => toast.remove(), 300);
+            }, 3500);
+        };
+
+        function updateNavRedDot(count) {
+            const redDot = document.getElementById('navRedDot');
+            if (!redDot) return;
+
+            let num = parseInt(count);
+            if (isNaN(num)) {
+                let curr = parseInt(redDot.textContent) || 0;
+                num = curr + 1;
+            }
+
+            const currentText = redDot.textContent;
+            const newText = num > 9 ? '9+' : String(num);
+
+            redDot.textContent = newText;
+            if (num > 0) {
+                redDot.style.display = 'inline-flex';
+                redDot.setAttribute('title', num + ' yeni bildirim');
+                if (currentText !== newText) {
+                    redDot.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    redDot.style.transform = 'scale(1.35)';
+                    setTimeout(() => { redDot.style.transform = 'scale(1)'; }, 250);
+                }
+            } else {
+                redDot.style.display = 'none';
+            }
+        }
+
+        function updateNavReportsRedDot(count) {
+            const redDot = document.getElementById('navReportsRedDot');
+            if (!redDot) return;
+
+            let num = parseInt(count);
+            if (isNaN(num)) {
+                let curr = parseInt(redDot.textContent) || 0;
+                num = curr + 1;
+            }
+
+            const currentText = redDot.textContent;
+            const newText = num > 9 ? '9+' : String(num);
+
+            redDot.textContent = newText;
+            if (num > 0) {
+                redDot.style.display = 'inline-flex';
+                redDot.setAttribute('title', num + ' bekleyen rapor');
+                if (currentText !== newText) {
+                    redDot.style.transition = 'transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+                    redDot.style.transform = 'scale(1.35)';
+                    setTimeout(() => { redDot.style.transform = 'scale(1)'; }, 250);
+                }
+            } else {
+                redDot.style.display = 'none';
+            }
+        }
+
+        async function syncLiveUnreadCounts() {
+            try {
+                const res = await fetch('/auth/api/unread-count');
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.status === 'ok') {
+                        if (data.unread_count !== undefined) updateNavRedDot(data.unread_count);
+                        if (data.pending_reports !== undefined) updateNavReportsRedDot(data.pending_reports);
+                    }
+                }
+            } catch (e) {}
+        }
+
+        const isAuth = document.body.getAttribute('data-authenticated') === 'true';
+        if (isAuth) {
+            syncLiveUnreadCounts();
+            setInterval(syncLiveUnreadCounts, 3000);
+
+            window.globalSocket = io();
+            const globalSocket = window.globalSocket;
+            globalSocket.on('match_request_received', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+                if (data && data.message && typeof showToast === 'function') {
+                    showToast(data.message, 'info');
+                }
+            });
+
+            globalSocket.on('match_accepted', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+                if (data && data.message && typeof showToast === 'function') {
+                    showToast(data.message, 'success');
+                }
+            });
+
+            globalSocket.on('match_rejected', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+                if (data && data.message && typeof showToast === 'function') {
+                    showToast(data.message, 'info');
+                }
+            });
+
+            globalSocket.on('unread_notifications_updated', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+            });
+
+            globalSocket.on('new_direct_message', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+                if (data && data.message && typeof showToast === 'function') {
+                    showToast(data.message, 'info');
+                }
+            });
+
+            globalSocket.on('new_report_notification', function(data) {
+                if (data && data.pending_count !== undefined) {
+                    updateNavReportsRedDot(data.pending_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+            });
+
+            globalSocket.on('new_report', function(data) {
+                syncLiveUnreadCounts();
+            });
+
+            globalSocket.on('user_banned_globally', function(data) {
+                if (data && (String(data.user_id) === "{{ current_user.id }}" || Number(data.user_id) === Number("{{ current_user.id or 0 }}"))) {
+                    window.location.href = (data && data.redirect_url) ? data.redirect_url : '/auth/banned';
+                }
+            });
+
+            globalSocket.on('user_banned_from_cafe', function(data) {
+                if (data && (String(data.user_id) === "{{ current_user.id }}" || Number(data.user_id) === Number("{{ current_user.id or 0 }}"))) {
+                    if (window.location.pathname.includes('/chat') || window.location.pathname.includes('/cafe')) {
+                        window.location.href = (data && data.redirect_url) ? data.redirect_url : '/';
+                    }
+                }
+            });
+
+            globalSocket.on('cafe_deactivated_business', function(data) {
+                window.location.href = (data && data.redirect_url) ? data.redirect_url : '/business/disabled';
+            });
+
+            globalSocket.on('match_removed', function(data) {
+                if (data && data.unread_count !== undefined) {
+                    updateNavRedDot(data.unread_count);
+                } else {
+                    syncLiveUnreadCounts();
+                }
+                if (data && data.message && typeof window.showToast === 'function') {
+                    window.showToast(data.message, 'info');
+                }
+            });
+
+            globalSocket.on('error', function(data) {
+                if (data && data.message && typeof showToast === 'function') {
+                    showToast(data.message, 'error');
+                }
+            });
+        }
+
+        window.addEventListener('pageshow', function(event) {
+            if (event.persisted || (window.performance && (window.performance.navigation && window.performance.navigation.type === 2))) {
+                window.location.reload(true);
+            }
+        });
+    
+</script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+{% block title %}Kafeler — Talknon Admin{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+<style></style>
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title">Kafe Yönetimi</h1>
+        <a href="{{ url_for('admin.create_cafe') }}" class="top-bar-action" id="addCafeBtn" title="Yeni Kafe Ekle">
+            <i data-lucide="plus" style="width: 18px; height: 18px;"></i>
+        </a>
+    </div>
+
+    <form method="GET" action="{{ url_for('admin.cafes') }}" style="margin-top: var(--space-md);">
+        <div style="display: flex; gap: var(--space-sm);">
+            <div style="position: relative; flex: 1;">
+                <input type="text" name="q" value="{{ search or '' }}" class="form-input" placeholder="Kafe adı, şehir veya adres ara..." style="padding-left: 36px;">
+                <i data-lucide="search" style="width: 16px; height: 16px; position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-muted);"></i>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Ara</button>
+            {% if search %}
+            <a href="{{ url_for('admin.cafes') }}" class="btn btn-outline btn-sm">Temizle</a>
+            {% endif %}
+        </div>
+    </form>
+
+    <div style="margin-top: var(--space-md);">
+        {% for cafe in cafes.items %}
+        <div class="cafe-card-item" id="cafeCard-{{ cafe.id }}">
+            <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) }}" style="text-decoration: none; color: inherit; display: flex; align-items: center; gap: var(--space-md); flex: 1; min-width: 0;">
+                <i data-lucide="coffee" style="width: 28px; height: 28px; color: var(--primary-light); flex-shrink: 0;"></i>
+                <div style="flex: 1; min-width: 0;">
+                    <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
+                        <span style="font-weight: 700; font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                            {{ cafe.name }}
+                        </span>
+                        {% if cafe.is_active %}
+                            <span class="badge badge-success" style="font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0;">Aktif</span>
+                        {% else %}
+                            <span class="badge badge-danger" style="font-size: 0.65rem; padding: 2px 8px; flex-shrink: 0;">Pasif</span>
+                        {% endif %}
+                    </div>
+                    <div style="font-size: 0.75rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        {{ cafe.address or 'Adres belirtilmemiş' }}
+                    </div>
+                    <div style="display: flex; align-items: center; gap: var(--space-sm); margin-top: 4px; font-size: 0.7rem;">
+                        <span style="color: var(--success); font-weight: 600;">{{ cafe.get_active_user_count() }} Çevrim İçi</span>
+                        <span style="color: var(--info); font-weight: 600;">{{ cafe.messages.filter_by(is_deleted=False).count() }} Mesaj</span>
+                        <span style="color: var(--primary-light); font-family: var(--font-mono);">Kod: {{ cafe.business_code or 'Yok' }}</span>
+                    </div>
+                </div>
+            </a>
+
+            <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0; margin-left: 8px;">
+                <a href="{{ url_for('admin.edit_cafe', cafe_id=cafe.id) }}" class="top-bar-action" style="width: 36px; height: 36px; border-radius: 10px;" title="Kafeyi Düzenle">
+                    <i data-lucide="edit-3" style="width: 16px; height: 16px;"></i>
+                </a>
+                <form method="POST" action="{{ url_for('admin.delete_cafe', cafe_id=cafe.id) }}" style="margin: 0;" onsubmit="return confirm('Bu kafeyi ve ilişkili tüm verileri silmek istediğinize emin misiniz?');">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button class="top-bar-action" style="width: 36px; height: 36px; border-radius: 10px; background: rgba(235, 87, 87, 0.12); color: var(--danger); border-color: rgba(235, 87, 87, 0.25);" title="Kafeyi Sil">
+                        <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+
+        {% if not cafes.items %}
+        <div class="empty-state">
+            <div class="empty-state-icon"><i data-lucide="coffee" style="width: 56px; height: 56px;"></i></div>
+            <p class="empty-state-text">{{ 'Aramanıza uygun kafe bulunamadı.' if search else 'Henüz kafe eklenmemiş.' }}</p>
+            {% if not search %}
+            <a href="{{ url_for('admin.create_cafe') }}" class="btn btn-primary mt-lg" id="createFirstCafeBtn" style="color: #ffffff !important; display: inline-flex; align-items: center; gap: 8px;">
+                <i data-lucide="plus" style="width: 18px; height: 18px;"></i> {{ t('İlk Kafeyi Ekle') }}
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+
+    {% if cafes.has_prev or cafes.has_next %}
+    <div class="pagination">
+        {% if cafes.has_prev %}<a href="{{ url_for('admin.cafes', page=cafes.prev_num, q=search) }}">Önceki</a>{% endif %}
+        <span class="active">{{ cafes.page }} / {{ cafes.pages }}</span>
+        {% if cafes.has_next %}<a href="{{ url_for('admin.cafes', page=cafes.next_num, q=search) }}">Sonraki</a>{% endif %}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

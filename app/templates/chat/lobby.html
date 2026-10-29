@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}{{ cafe.name }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="page-content" style="padding-bottom: 40px;">
+    <div style="text-align: center; padding: var(--space-xl) 0;">
+        <div class="lobby-icon">
+            <i data-lucide="coffee" style="width: 48px; height: 48px; color: var(--primary-light);"></i>
+        </div>
+        <h2 class="lobby-cafe-name">{{ cafe.name }}</h2>
+        {% if cafe.address %}
+        <p class="lobby-cafe-address">{{ cafe.address }}</p>
+        {% endif %}
+
+        <div id="joinSection" style="margin-top: var(--space-lg);">
+            <form method="POST" action="{{ url_for('chat.join_cafe', slug=cafe.qr_unique_slug) }}" id="joinForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <input type="hidden" name="latitude" id="latInput" value="0">
+                <input type="hidden" name="longitude" id="lngInput" value="0">
+
+                <button type="submit" class="btn btn-primary btn-block btn-lg" id="joinBtn" style="border-radius: 20px; box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4); font-weight: 800; font-size: 1rem;">
+                    {{ t('Anonim Sohbete Katıl') }}
+                </button>
+            </form>
+        </div>
+
+        <p class="text-muted" style="font-size: 0.75rem; margin-top: var(--space-md);">
+            {{ t('🔒 Kafedeyken sohbet edebilir, 25 metre dışına çıktığınızda gruptan çıkarılırsınız.') }}<br>{{ t('Eşleştiğiniz kişilerle özel mesajlaşmaya devam edebilirsiniz.') }}
+        </p>
+    </div>
+
+    <a href="{{ url_for('chat.index') }}" class="btn btn-ghost btn-block" id="goBackBtn" style="margin-top: var(--space-md);">
+        {{ t('Geri Dön') }}
+    </a>
+</div>
+
+{% endblock %}
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                document.getElementById('latInput').value = pos.coords.latitude;
+                document.getElementById('lngInput').value = pos.coords.longitude;
+            },
+            () => {},
+            { timeout: 5000 }
+        );
+    }
+
+</script>
+{% endblock %}

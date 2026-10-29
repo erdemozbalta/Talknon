@@ -1,0 +1,913 @@
+{% extends "base.html" %}
+{% block title %}{{ cafe.name }} Sohbet — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+<style></style>
+{% endblock %}
+{% block content %}
+<div id="roomMetaData"
+     data-cafe-slug="{{ cafe.qr_unique_slug }}"
+     data-cafe-id="{{ cafe.id }}"
+     data-session-id="{{ session.id }}"
+     data-user-id="{{ current_user.id }}"
+     data-is-moderator="{% if current_user.is_business() or current_user.is_admin() %}true{% else %}false{% endif %}"
+     data-delete-url-template="{% if current_user.is_admin() %}{{ url_for('admin.delete_message', message_id=0) }}{% else %}{{ url_for('business.delete_message', message_id=0) }}{% endif %}"
+     data-ban-url-template="{{ url_for('business.ban_user', session_id=0) }}"
+     data-blocked-ids="{{ current_user.get_blocked_user_ids() | tojson if (current_user and current_user.is_authenticated) else '[]' }}"
+     style="display: none;"></div>
+
+<div class="chat-container has-bottom-nav">
+
+    <div class="chat-header">
+        <div class="chat-header-info">
+            {% if current_user.is_admin() %}
+            <a href="{{ url_for('admin.cafe_detail', cafe_id=cafe.id) }}" class="chat-header-btn" style="width: 34px; height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center; flex-shrink: 0;" title="{{ t('Admin Paneline Dön') }}">
+                <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+            </a>
+            {% endif %}
+            <div class="chat-header-badge">
+                <i data-lucide="coffee" style="width: 18px; height: 18px; color: var(--primary-light);"></i>
+            </div>
+            <div style="min-width: 0; flex: 1;">
+                <div class="chat-header-title">
+                    <span class="cafe-name-span">{{ cafe.name }}</span>
+                    <span class="chat-header-tag">{{ t('KAFE SOHBETİ') }}</span>
+                </div>
+                <div class="chat-header-count">
+                    <span class="live-pulse-dot"></span>
+                    <span id="activeCount">{{ active_users|length }}</span> {{ t('Kişi Çevrim İçi') }}
+                </div>
+            </div>
+        </div>
+        <div class="chat-header-right-actions">
+            {% if current_user.is_admin() or current_user.is_business() %}
+            <button class="chat-header-btn" onclick="toggleUsersDrawer()" id="usersBtn" title="{{ t('Çevrim İçi Kullanıcılar') }}">
+                <i data-lucide="users"></i>
+            </button>
+            {% endif %}
+            <form method="POST" action="{{ url_for('chat.leave_cafe', slug=cafe.qr_unique_slug) }}" style="margin: 0;">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <button type="submit" class="chat-header-btn leave-btn" id="leaveChatBtn" title="{{ t('Sohbetten Ayrıl ve Çık') }}">
+                    <i data-lucide="log-out"></i>
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="spam-warning" id="spamWarning"></div>
+
+    {% if not current_user.is_business() and not current_user.is_admin() %}
+
+    <div class="chat-trust-overlay" id="chatTrustOverlay">
+        <div class="trust-icon-box">
+            <i data-lucide="shield-check" style="width: 22px; height: 22px;"></i>
+        </div>
+        <div class="trust-text-box">
+            <div class="trust-title">{{ t('Güvenli ve Denetlenen Sohbet') }}</div>
+            <div class="trust-desc">
+                {{ t('Bu sohbet alanı işletme ve sistem tarafından 7/24 denetlenmektedir. Argo, küfür ve uygunsuz davranışlarda bulunan hesaplar engellenir.') }}
+            </div>
+        </div>
+        <button type="button" class="btn-trust-close" onclick="closeTrustOverlay()" title="Kapat">
+            <i data-lucide="x" style="width: 16px; height: 16px;"></i>
+        </button>
+    </div>
+    {% endif %}
+
+    <div class="chat-messages {% if current_user.is_admin() or current_user.is_business() %}admin-biz-messages{% endif %}" id="chatMessages">
+        {% set ns = namespace(last_sender_session_id=None) %}
+        {% set blocked_ids = current_user.get_blocked_user_ids() if current_user and current_user.is_authenticated else [] %}
+        {% for msg in messages %}
+        {% if msg.sender_session and msg.sender_session.user_id not in blocked_ids %}
+        {% set is_own = (msg.sender_session.user_id == current_user.id) %}
+        {% set is_consecutive = (ns.last_sender_session_id is not none and msg.sender_session_id == ns.last_sender_session_id) %}
+        {% set ns.last_sender_session_id = msg.sender_session_id %}
+        {% set nick_color = '#facc15' if is_own else get_nickname_color(msg.sender_session.nickname) %}
+
+        <div class="message {% if is_own %}message-own{% endif %} {% if is_consecutive %}consecutive-message{% endif %}" data-id="{{ msg.id }}" data-session="{{ msg.sender_session_id }}">
+            <div class="message-bubble">
+                {% if not is_consecutive %}
+                {% set s_user = msg.sender_session.user if msg.sender_session else None %}
+                {% set r_name = (s_user.first_name ~ ' ' ~ s_user.last_name).strip() if s_user else '' %}
+                {% set r_phone = s_user.display_phone if s_user else '' %}
+                <div class="message-nickname user-color-text {% if not is_own %}clickable-nickname{% endif %}" data-nick-color="{{ nick_color }}" style="font-weight: 700;" {% if not is_own %}data-session-id="{{ msg.sender_session_id }}" data-nickname="{{ msg.sender_session.nickname }}" data-real-name="{{ r_name }}" data-phone="{{ r_phone }}" data-msg-id="{{ msg.id }}" onclick="triggerActionFromEl(this)" title="{{ t('Profil & Detay Bilgisi') }}"{% endif %}>
+                    {{ msg.sender_session.nickname }} {% if is_own %}<span style="font-size: 0.72rem; opacity: 0.75; font-weight: 500;">({{ t('Siz') }})</span>{% endif %}
+                </div>
+                {% endif %}
+                <div class="message-body">
+                    <span class="message-content">{{ msg.content }}</span>
+                    <span class="message-time">{{ msg.created_at.strftime('%H:%M') }}</span>
+                </div>
+            </div>
+            {% if current_user.is_business() or current_user.is_admin() %}
+            <div class="moderator-actions" style="display: flex; align-items: center; gap: 4px; opacity: 0.7; transition: opacity 0.2s;" onmouseenter="this.style.opacity='1'" onmouseleave="this.style.opacity='0.7'">
+                <button type="button" class="message-report-btn" onclick="deleteMessage('{{ msg.id }}', this)" title="{{ t('Mesajı Sil') }}" style="color: var(--danger);">
+                    <i data-lucide="trash-2"></i>
+                </button>
+                {% if not is_own %}
+                <button type="button" class="message-report-btn" onclick="openBanModal('{{ msg.sender_session_id }}', '{{ msg.sender_session.nickname }}')" title="{{ t('Kullanıcıyı Banla') }}" style="color: var(--warning);">
+                    <i data-lucide="ban"></i>
+                </button>
+                {% endif %}
+            </div>
+            {% elif not is_own %}
+            <button class="message-report-btn" data-msg-id="{{ msg.id }}" data-session-id="{{ msg.sender_session_id }}" data-nickname="{{ msg.sender_session.nickname }}" data-content="{{ msg.content }}" onclick="triggerReportFromEl(this)" title="{{ t('Mesajı Raporla') }}">
+                <i data-lucide="flag"></i>
+            </button>
+            {% endif %}
+        </div>
+        {% endif %}
+        {% endfor %}
+    </div>
+
+    {% if not current_user.is_business() and not current_user.is_admin() %}
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <input type="text" class="chat-input" id="messageInput"
+                   placeholder="{{ t('Mesajınızı yazın...') }}" maxlength="1000"
+                   autocomplete="off">
+            <button class="chat-send-btn" id="sendBtn" onclick="sendMessage()">
+                <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
+    </div>
+    {% else %}
+    <div class="chat-input-container" style="padding: 14px 18px; background: rgba(18, 20, 32, 0.95); border-top: 1px solid rgba(255,255,255,0.08); text-align: center; margin-top: 10px;">
+        <span style="font-size: 0.8rem; color: #a78bfa; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 6px;">
+            <i data-lucide="shield-check" style="width: 16px; height: 16px;"></i>
+            {{ t('Canlı Sohbet İzleme Modu — İşletmeler mesaj gönderemez.') }}
+        </span>
+    </div>
+    {% endif %}
+
+    {% if current_user.is_admin() or current_user.is_business() %}
+
+    <div class="users-drawer" id="usersDrawer">
+        <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 18px; padding-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.08);">
+            <h3 style="margin: 0; font-size: 1.05rem; font-weight: 800; color: #ffffff; display: flex; align-items: center; gap: 8px;">
+                <i data-lucide="users" style="width: 18px; height: 18px; color: var(--primary-light);"></i>
+                <span>{{ t('Çevrim İçi Kullanıcılar') }}</span>
+            </h3>
+            <button type="button" class="btn btn-ghost btn-sm" onclick="toggleUsersDrawer()" style="padding: 4px 8px; border-radius: 50%;">
+                <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
+        <div id="usersList">
+            {% for user in active_users %}
+            {% set is_own = (user.user_id == current_user.id) %}
+            {% set u_color = get_nickname_color(user.nickname) %}
+            <div class="user-list-item" data-session="{{ user.id }}" style="padding: 10px; border-radius: 12px; margin-bottom: 8px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06);">
+                <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 8px;">
+                    <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0;">
+                        <div class="avatar avatar-sm user-color-bg" data-user-bg="{{ u_color }}" style="color: #ffffff; font-weight: 800; flex-shrink: 0;">{{ user.nickname[0]|upper }}</div>
+                        <div style="display: flex; flex-direction: column; min-width: 0;">
+                            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap;">
+                                <span class="user-list-nickname user-color-text" data-user-color="{{ u_color }}" style="font-weight: 700; font-size: 0.88rem;">{{ user.nickname }}</span>
+                                {% if (current_user.is_admin() or current_user.is_business()) and user.user and (user.user.first_name or user.user.last_name) %}
+                                <span style="font-size: 0.76rem; color: #cbd5e1; font-weight: 600;">({{ user.user.first_name }} {{ user.user.last_name }})</span>
+                                {% endif %}
+                            </div>
+                            {% if (current_user.is_admin() or current_user.is_business()) and user.user and user.user.display_phone != 'Anonim Kullanıcı' %}
+                            <span style="font-size: 0.72rem; color: var(--primary-light); font-family: var(--font-mono);">📞 {{ user.user.display_phone }}</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if is_own %}
+                    <span class="badge badge-primary">{{ t('Siz') }}</span>
+                    {% elif current_user.is_admin() or current_user.is_business() %}
+                    <button type="button" class="btn btn-sm btn-danger" onclick="openBanModal('{{ user.id }}', '{{ user.nickname }}')" style="border-radius: 10px; font-size: 0.75rem; padding: 5px 10px; flex-shrink: 0;">
+                        <i data-lucide="ban" style="width: 13px; height: 13px;"></i> {{ t('Banla') }}
+                    </button>
+                    {% else %}
+                    <button class="btn btn-sm btn-accent" data-session-id="{{ user.id }}" data-nickname="{{ user.nickname }}" onclick="triggerActionFromEl(this)" id="matchBtn-{{ user.id }}" title="{{ t('Eşleşme & Profil') }}">
+                        <i data-lucide="heart" style="width: 14px; height: 14px;"></i> {{ t('Eşleş') }}
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="action-modal-overlay" id="userActionModal">
+        <div class="action-modal-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="avatar avatar-md" id="modalUserAvatar" style="background: linear-gradient(135deg, var(--primary), var(--accent)); font-weight: 800;">U</div>
+                    <div>
+                        <strong id="modalUserNickname" style="font-size: 1.05rem; display: block; color: var(--text-primary);">Kullanıcı</strong>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeUserActionModal()" style="padding: 4px 8px;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 6px;">
+                {% if not current_user.is_admin() and not current_user.is_business() %}
+                <button type="button" class="btn btn-primary btn-block btn-lg" onclick="submitModalMatchRequest()" style="border-radius: 18px; box-shadow: 0 6px 20px rgba(108, 99, 255, 0.35);">
+                    <i data-lucide="heart" style="width: 18px; height: 18px;"></i> {{ t('Eşleşme İsteği Gönder') }}
+                </button>
+                {% else %}
+                <div id="modalModeratorInfo" style="background: rgba(108, 99, 255, 0.1); border: 1px solid rgba(108, 99, 255, 0.25); padding: 14px; border-radius: 14px; font-size: 0.84rem; display: flex; flex-direction: column; gap: 8px; text-align: left;">
+                    <div style="font-weight: 700; color: #a78bfa; font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.3px; display: flex; align-items: center; gap: 6px;">
+                        <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i> Moderatör İnceleme Kartı
+                    </div>
+                    <div><strong style="color: #cbd5e1;">Adı Soyadı:</strong> <span id="modalUserRealName" style="color: #ffffff; font-weight: 700;">-</span></div>
+                    <div><strong style="color: #cbd5e1;">Telefon Numarası:</strong> <span id="modalUserPhone" style="color: var(--primary-light); font-family: var(--font-mono); font-weight: 700;">-</span></div>
+                </div>
+
+                <button type="button" class="btn btn-danger btn-block" onclick="closeUserActionModal(); openBanModal(selectedTargetSessionId, selectedTargetNickname);" style="border-radius: 14px; margin-top: 6px; padding: 11px 12px; font-size: 0.86rem; font-weight: 700; display: flex !important; align-items: center !important; justify-content: center !important; text-align: center !important; width: 100%; gap: 6px;">
+                    <i data-lucide="ban" style="width: 15px; height: 15px; flex-shrink: 0;"></i>
+                    <span style="text-align: center; font-size: 0.86rem;">Kullanıcıyı Yasakla / Banla</span>
+                </button>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="action-modal-overlay" id="reportModal">
+        <div class="action-modal-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px;">
+                <div style="font-weight: 700; font-size: 1rem; color: #f43f5e; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="shield-alert" style="width: 20px; height: 20px;"></i>
+                    <span>{{ t('Şikayet & Raporlama') }}</span>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeReportModal()" style="padding: 4px 8px;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+
+            <p style="font-size: 0.82rem; color: var(--text-secondary); margin-bottom: 12px;">
+                <strong id="reportTargetName" style="color: var(--text-primary);">Kullanıcı</strong> hakkındaki şikayet nedeninizi seçin. Rapor işletme ve admin paneline iletilir:
+            </p>
+
+            <div style="font-size: 0.78rem; font-style: italic; color: var(--text-muted); margin-bottom: 12px; padding: 8px 12px; background: rgba(255,255,255,0.03); border-radius: 12px;" id="reportMessageText">
+                (Mesaj içeriği)
+            </div>
+
+            <div class="report-chip-group">
+                <div class="report-chip selected" data-reason="harassment" onclick="selectReportCategory(this)">
+                    {{ t('Taciz / Rahatsız Etme') }}
+                </div>
+                <div class="report-chip" data-reason="hate_speech" onclick="selectReportCategory(this)">
+                    {{ t('Küfür / Nefret Söylemi') }}
+                </div>
+                <div class="report-chip" data-reason="spam" onclick="selectReportCategory(this)">
+                    {{ t('Spam / İstenmeyen Mesaj') }}
+                </div>
+                <div class="report-chip" data-reason="fake" onclick="selectReportCategory(this)">
+                    {{ t('Sahte / Şüpheli Profil') }}
+                </div>
+                <div class="report-chip" data-reason="other" onclick="selectReportCategory(this)">
+                    {{ t('Diğer') }}
+                </div>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 16px;">
+                <label class="form-label" style="font-size: 0.78rem;">{{ t('Ek Detaylar (İsteğe Bağlı)') }}</label>
+                <textarea id="reportReasonInput" class="form-input" rows="2" placeholder="{{ t('Durumu açıklayacak ek bir bilgi yazabilirsiniz...') }}" style="font-size: 0.85rem; border-radius: 14px; background: rgba(255,255,255,0.04);"></textarea>
+            </div>
+
+            <button type="button" class="btn btn-danger btn-block btn-lg" onclick="submitReportModal()" style="border-radius: 18px; background: linear-gradient(135deg, #e11d48, #f43f5e); box-shadow: 0 8px 25px rgba(225, 29, 72, 0.4);">
+                <i data-lucide="send" style="width: 16px; height: 16px;"></i>
+                {{ t('Raporu Gönder') }}
+            </button>
+        </div>
+    </div>
+
+    <div id="drawerOverlay" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); z-index: 999998; display: none;" onclick="toggleUsersDrawer()"></div>
+
+    {% if current_user.is_admin() or current_user.is_business() %}
+
+    <div class="action-modal-overlay" id="banModal">
+        <div class="action-modal-card">
+            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                <div style="font-weight: 800; font-size: 1rem; color: var(--warning); display: flex; align-items: center; gap: 8px;">
+                    <i data-lucide="ban" style="width: 20px; height: 20px;"></i>
+                    <span>Kullanıcıyı Yasakla</span>
+                </div>
+                <button type="button" class="btn btn-ghost btn-sm" onclick="closeBanModal()" style="padding: 4px 8px;">
+                    <i data-lucide="x" style="width: 18px; height: 18px;"></i>
+                </button>
+            </div>
+
+            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 14px;">
+                <strong id="banTargetNickname" style="color: var(--text-primary);">Kullanıcı</strong> hesabına uygulanacak ban süresini seçin:
+            </p>
+
+            <form id="banForm" method="POST" action="">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                {% if current_user.is_admin() %}
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-size: 0.78rem; color: #a78bfa; font-weight: 700;">Ban Kapsamı (Yetkili Seçimi)</label>
+                    <select name="ban_scope" class="form-input" style="border-radius: 12px; background-color: #121420; color: #ffffff; border: 1px solid rgba(108, 99, 255, 0.4);">
+                        <option value="cafe" selected style="background-color: #121420; color: #ffffff;">Sadece Bu Kafeden Yasakla</option>
+                        <option value="global" style="background-color: #121420; color: #ffffff;">Tüm Uygulamadan Banla (Sistem Banı)</option>
+                    </select>
+                </div>
+                {% else %}
+                <input type="hidden" name="ban_scope" value="cafe">
+                {% endif %}
+
+                <div class="form-group" style="margin-bottom: 14px;">
+                    <label class="form-label" style="font-size: 0.78rem;">Ban Süresi</label>
+                    <select name="duration" class="form-input" style="border-radius: 12px; background-color: #121420; color: #ffffff;">
+                        <option value="1" style="background-color: #121420; color: #ffffff;">1 Saat (Geçici)</option>
+                        <option value="5" style="background-color: #121420; color: #ffffff;">5 Saat (Geçici)</option>
+                        <option value="24" selected style="background-color: #121420; color: #ffffff;">24 Saat (1 Gün)</option>
+                        <option value="168" style="background-color: #121420; color: #ffffff;">7 Gün (1 Hafta)</option>
+                        <option value="permanent" style="background-color: #121420; color: #ffffff;">Kalıcı Ban (Sınırsız)</option>
+                    </select>
+                </div>
+
+                <div class="form-group" style="margin-bottom: 18px;">
+                    <label class="form-label" style="font-size: 0.78rem;">Yasaklama Nedeni *</label>
+                    <input type="text" name="reason" class="form-input" placeholder="Örn: Uygunsuz konuşma veya spam" style="border-radius: 12px; background: rgba(255,255,255,0.04);" required>
+                </div>
+
+                <button type="submit" class="btn btn-warning btn-block btn-lg" style="border-radius: 16px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; text-align: center;">
+                    <i data-lucide="shield-alert" style="width: 16px; height: 16px;"></i> <span>Banlama İşlemini Onayla</span>
+                </button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    const roomMeta = document.getElementById('roomMetaData');
+    const cafeSlug = roomMeta.getAttribute('data-cafe-slug');
+    const cafeId = parseInt(roomMeta.getAttribute('data-cafe-id'));
+    const currentSessionId = parseInt(roomMeta.getAttribute('data-session-id'));
+    const currentUserId = parseInt(roomMeta.getAttribute('data-user-id'));
+    const IS_MODERATOR = (roomMeta.getAttribute('data-is-moderator') === 'true');
+    const deleteUrlTemplate = roomMeta.getAttribute('data-delete-url-template');
+    const banUrlTemplate = roomMeta.getAttribute('data-ban-url-template');
+    let pendingMatchRequestId = null;
+
+    const NICKNAME_COLORS = [
+        '#10b981', '#06b6d4', '#a855f7', '#ec4899', '#f59e0b',
+        '#3b82f6', '#f43f5e', '#8b5cf6', '#14b8a6', '#eab308',
+        '#f97316', '#6366f1', '#84cc16', '#d946ef', '#0284c7',
+        '#e11d48', '#059669', '#7c3aed', '#d97706', '#0891b2',
+        '#c026d3', '#4f46e5', '#16a34a', '#ff4757'
+    ];
+
+    function getNicknameColor(name) {
+        if (!name) return NICKNAME_COLORS[0];
+        let sum = 0;
+        for (let i = 0; i < name.length; i++) {
+            sum += name.charCodeAt(i);
+        }
+        return NICKNAME_COLORS[sum % NICKNAME_COLORS.length];
+    }
+
+    const socket = window.globalSocket || io();
+
+    function initChatRoom() {
+        socket.emit('join_chat', { cafe_slug: cafeSlug });
+    }
+    if (socket.connected) {
+        initChatRoom();
+    }
+    socket.on('connect', initChatRoom);
+
+    socket.on('new_message', (data) => { addMessage(data); });
+
+    socket.on('message_deleted', (data) => {
+        if (data && data.message_id) {
+            const msgEl = document.querySelector(`.message[data-id="${data.message_id}"]`);
+            if (msgEl) {
+                msgEl.style.transition = 'all 0.25s ease';
+                msgEl.style.opacity = '0';
+                msgEl.style.transform = 'scale(0.85)';
+                setTimeout(() => msgEl.remove(), 250);
+            }
+        }
+    });
+    socket.on('user_banned_globally', (data) => {
+        if (data && (Number(data.user_id) === Number(currentUserId) || String(data.user_id) === String(currentUserId))) {
+            window.location.href = (data && data.redirect_url) ? data.redirect_url : '/auth/banned';
+        }
+    });
+
+    socket.on('user_banned_from_cafe', (data) => {
+        if (data && (Number(data.user_id) === Number(currentUserId) || String(data.user_id) === String(currentUserId) || data.session_id === currentSessionId)) {
+            window.location.href = (data && data.redirect_url) ? data.redirect_url : '/';
+        }
+    });
+
+    socket.on('user_joined', (data) => {
+        if (data.message) addSystemMessage(data.message);
+        document.getElementById('activeCount').textContent = data.active_count;
+    });
+
+    socket.on('user_left', (data) => {
+        if (data.message) addSystemMessage(data.message);
+        document.getElementById('activeCount').textContent = data.active_count;
+    });
+
+    socket.on('cafe_deactivated', (data) => {
+        alert(data.message || 'Bu kafe yayından kaldırılmıştır.');
+        window.location.href = data.redirect_url || "{{ url_for('chat.index') }}";
+    });
+
+    let spamCountdownInterval = null;
+
+    socket.on('spam_warning', (data) => {
+        const warning = document.getElementById('spamWarning');
+        if (!warning) return;
+
+        let remaining = parseInt(data.timeout || data.remaining_sec || 0, 10);
+        if (remaining <= 0) remaining = 1;
+
+        if (spamCountdownInterval) {
+            clearInterval(spamCountdownInterval);
+            spamCountdownInterval = null;
+        }
+
+        function updateSpamText(sec) {
+            warning.innerHTML = `
+                <i data-lucide="shield-alert" style="width: 16px; height: 16px; color: #ef4444; flex-shrink: 0;"></i>
+                <span>Çok hızlı mesaj gönderdiğiniz için <strong style="font-family: var(--font-mono); color: #ffffff; background: rgba(239, 68, 68, 0.45); padding: 2px 7px; border-radius: 6px; font-weight: 800; font-size: 0.95rem; border: 1px solid rgba(239, 68, 68, 0.6);">${sec}</strong> saniye boyunca sohbet kısıtlaması uygulandı.</span>
+            `;
+            if (window.lucide) lucide.createIcons();
+        }
+
+        updateSpamText(remaining);
+        warning.classList.add('active');
+
+        spamCountdownInterval = setInterval(() => {
+            remaining -= 1;
+            if (remaining > 0) {
+                updateSpamText(remaining);
+            } else {
+                clearInterval(spamCountdownInterval);
+                spamCountdownInterval = null;
+                warning.classList.remove('active');
+                if (typeof showToast === 'function') {
+                    showToast('Sohbet kısıtlamanız sona erdi, artık mesaj gönderebilirsiniz.', 'success');
+                }
+            }
+        }, 1000);
+    });
+
+    socket.on('match_request_received', (data) => {
+        if (data && data.unread_count !== undefined && typeof updateNavRedDot === 'function') {
+            updateNavRedDot(data.unread_count);
+        }
+    });
+
+    socket.on('match_accepted', (data) => {
+        if (data && data.unread_count !== undefined && typeof updateNavRedDot === 'function') {
+            updateNavRedDot(data.unread_count);
+        }
+        showToast(data.message, 'success');
+        addSystemMessage(data.message + ' <a href="/dm/' + data.match_id + '" style="color: var(--primary-light); font-weight: 600;">Sohbet Et &rarr;</a>');
+    });
+
+    socket.on('match_request_sent', (data) => { showToast(data.message, 'info'); });
+    socket.on('match_rejected', (data) => {
+        if (data && data.unread_count !== undefined && typeof updateNavRedDot === 'function') {
+            updateNavRedDot(data.unread_count);
+        }
+        showToast(data.message, 'error');
+    });
+    socket.on('unread_notifications_updated', (data) => {
+        if (data && data.unread_count !== undefined && typeof updateNavRedDot === 'function') {
+            updateNavRedDot(data.unread_count);
+        }
+    });
+    socket.on('report_submitted', (data) => { showToast(data.message, 'success'); });
+    socket.on('error', (data) => { showToast(data.message, 'error'); });
+
+    function sendMessage() {
+        const input = document.getElementById('messageInput');
+        const content = input.value.trim();
+        if (!content) return;
+        socket.emit('send_message', { content: content });
+        input.value = '';
+        input.focus();
+    }
+
+    const msgInput = document.getElementById('messageInput');
+    if (msgInput) {
+        msgInput.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendMessage();
+            }
+        });
+    }
+
+    function deleteMessage(msgId, el) {
+        const deleteUrl = deleteUrlTemplate ? deleteUrlTemplate.replace('/0', '/' + msgId) : `/business/messages/${msgId}/delete`;
+
+        const msgEl = el.closest('.message');
+        if (msgEl) {
+            msgEl.style.transition = 'all 0.2s ease';
+            msgEl.style.opacity = '0';
+            msgEl.style.transform = 'scale(0.9)';
+            setTimeout(() => msgEl.remove(), 200);
+        }
+
+        fetch(deleteUrl, {
+            method: 'POST',
+            headers: { 'X-CSRFToken': '{{ csrf_token() }}' }
+        }).catch(err => console.error(err));
+    }
+
+    function openBanModal(sessionId, nickname) {
+        const modal = document.getElementById('banModal');
+        if (!modal) return;
+        document.getElementById('banTargetNickname').textContent = nickname || 'Kullanıcı';
+        const banUrl = banUrlTemplate ? banUrlTemplate.replace('/0', '/' + sessionId) : `/business/ban/${sessionId}`;
+        document.getElementById('banForm').action = banUrl;
+        modal.classList.add('active');
+    }
+
+    function closeBanModal() {
+        const modal = document.getElementById('banModal');
+        if (modal) modal.classList.remove('active');
+    }
+
+    let lastSenderSessionId = null;
+    let selectedTargetSessionId = null;
+    let selectedTargetNickname = '';
+    let selectedMessageId = null;
+    let selectedReportCategory = 'harassment';
+
+    function getLastSenderSessionId() {
+        if (lastSenderSessionId !== null && lastSenderSessionId !== undefined) {
+            return lastSenderSessionId;
+        }
+        const messages = document.querySelectorAll('#chatMessages .message');
+        if (messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            const sess = lastMsg.getAttribute('data-session');
+            if (sess) return sess;
+        }
+        return null;
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyDynamicColors();
+        const messages = document.querySelectorAll('#chatMessages .message');
+        if (messages.length > 0) {
+            const lastMsg = messages[messages.length - 1];
+            lastSenderSessionId = lastMsg.getAttribute('data-session') || null;
+        }
+    });
+
+    const blockedUserIds = JSON.parse(roomMeta.getAttribute('data-blocked-ids') || '[]');
+
+    function addMessage(data) {
+        if (data.user_id && blockedUserIds.includes(data.user_id)) {
+            return;
+        }
+        const container = document.getElementById('chatMessages');
+        const isOwn = (data.user_id === currentUserId) || (data.session_id === currentSessionId);
+        const time = new Date(data.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+
+        const prevSessionId = getLastSenderSessionId();
+        const isConsecutive = (prevSessionId !== null && String(data.session_id) === String(prevSessionId));
+        lastSenderSessionId = data.session_id;
+
+        const nickColor = isOwn ? '#facc15' : getNicknameColor(data.nickname);
+        const nicknameHtml = !isConsecutive ? `
+            <div class="message-nickname user-color-text ${!isOwn ? 'clickable-nickname' : ''}" data-nick-color="${nickColor}" style="font-weight: 700;" ${!isOwn ? `data-session-id="${data.session_id}" data-nickname="${escapeHtml(data.nickname)}" data-real-name="${escapeHtml(data.real_name || '')}" data-phone="${escapeHtml(data.phone || '')}" data-msg-id="${data.id}" onclick="triggerActionFromEl(this)" title="Profil & Detay Bilgisi"` : ''}>
+                ${escapeHtml(data.nickname)} ${isOwn ? '<span style="font-size: 0.72rem; opacity: 0.75; font-weight: 500;">(' + ((typeof window.t === "function") ? window.t("Siz") : "Siz") + ')</span>' : ''}
+            </div>` : '';
+
+        let reportBtnHtml = '';
+        if (IS_MODERATOR) {
+            reportBtnHtml = `
+                <div style="display: flex; align-items: center; gap: 4px; margin-left: 6px;">
+                    <button type="button" class="message-report-btn" onclick="deleteMessage('${data.id}', this)" title="Mesajı Sil" style="color: var(--danger);">
+                        <i data-lucide="trash-2"></i>
+                    </button>
+                    ${!isOwn ? `
+                    <button type="button" class="message-report-btn" onclick="openBanModal('${data.session_id}', '${escapeHtml(data.nickname)}')" title="Kullanıcıyı Yasakla" style="color: var(--warning);">
+                        <i data-lucide="ban"></i>
+                    </button>` : ''}
+                </div>`;
+        } else if (!isOwn) {
+            reportBtnHtml = `
+                <button class="message-report-btn" data-msg-id="${data.id}" data-session-id="${data.session_id}" data-nickname="${escapeHtml(data.nickname)}" data-content="${escapeHtml(data.content)}" onclick="triggerReportFromEl(this)" title="Mesajı Raporla">
+                    <i data-lucide="flag"></i>
+                </button>`;
+        }
+
+        const msgHtml = `
+            <div class="message ${isOwn ? 'message-own' : ''} ${isConsecutive ? 'consecutive-message' : ''}" data-id="${data.id}" data-session="${data.session_id}">
+                <div class="message-bubble">
+                    ${nicknameHtml}
+                    <div class="message-body">
+                        <span class="message-content">${escapeHtml(data.content)}</span>
+                        <span class="message-time">${time}</span>
+                    </div>
+                </div>
+                ${reportBtnHtml}
+            </div>
+        `;
+        container.insertAdjacentHTML('beforeend', msgHtml);
+        applyDynamicColors();
+        container.scrollTop = container.scrollHeight;
+        lucide.createIcons();
+    }
+
+    function addSystemMessage(text, autoRemove = true) {
+        if (!text) return;
+        const container = document.getElementById('chatMessages');
+        const sysEl = document.createElement('div');
+        sysEl.className = 'system-message';
+        sysEl.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        sysEl.innerHTML = text;
+        container.appendChild(sysEl);
+        container.scrollTop = container.scrollHeight;
+
+        if (autoRemove) {
+            setTimeout(() => {
+                sysEl.style.opacity = '0';
+                sysEl.style.transform = 'scale(0.95)';
+                setTimeout(() => sysEl.remove(), 500);
+            }, 6000);
+        }
+    }
+
+    function triggerActionFromEl(el) {
+        const sessId = parseInt(el.getAttribute('data-session-id'));
+        const nick = el.getAttribute('data-nickname');
+        const msgId = el.getAttribute('data-msg-id') ? parseInt(el.getAttribute('data-msg-id')) : null;
+        const realName = el.getAttribute('data-real-name') || '';
+        const phone = el.getAttribute('data-phone') || '';
+        openUserActionModal(sessId, nick, msgId, realName, phone);
+    }
+
+    function triggerReportFromEl(el) {
+        const msgId = parseInt(el.getAttribute('data-msg-id'));
+        const sessId = parseInt(el.getAttribute('data-session-id'));
+        const nick = el.getAttribute('data-nickname');
+        const content = el.getAttribute('data-content');
+        openReportModal(msgId, sessId, nick, content);
+    }
+
+    function openUserActionModal(sessionId, nickname, messageId = null, realName = '', phone = '') {
+        selectedTargetSessionId = sessionId;
+        selectedTargetNickname = nickname;
+        selectedMessageId = messageId;
+
+        document.getElementById('modalUserNickname').textContent = nickname || 'Kullanıcı';
+        document.getElementById('modalUserAvatar').textContent = nickname ? nickname.charAt(0).toUpperCase() : 'U';
+
+        const realNameEl = document.getElementById('modalUserRealName');
+        const phoneEl = document.getElementById('modalUserPhone');
+        if (realNameEl) realNameEl.textContent = (realName && realName.trim()) ? realName.trim() : 'Belirtilmemiş';
+        if (phoneEl) phoneEl.textContent = (phone && phone.trim()) ? phone.trim() : 'Belirtilmemiş';
+
+        document.getElementById('userActionModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeUserActionModal() {
+        document.getElementById('userActionModal').classList.remove('active');
+    }
+
+    function showToast(message, type = 'info') {
+        if (!message) return;
+        let container = document.getElementById('toastContainer');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toastContainer';
+            container.className = 'top-toast-container';
+            document.body.appendChild(container);
+        }
+
+        const toast = document.createElement('div');
+        toast.className = `toast-notification ${type === 'error' ? 'toast-error' : (type === 'success' ? 'toast-success' : '')}`;
+        const translatedMsg = (typeof window.t === 'function') ? window.t(message) : message;
+        toast.innerHTML = `<span>${escapeHtml(translatedMsg)}</span>`;
+
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            toast.style.transition = 'opacity 0.3s ease, transform 0.3s ease';
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(15px)';
+            setTimeout(() => toast.remove(), 300);
+        }, 3200);
+    }
+
+    function sendMatchRequestDirect(targetSessionId, nickname) {
+        if (!targetSessionId) return;
+
+        fetch('/dm/send-request-api', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': '{{ csrf_token() }}'
+            },
+            body: JSON.stringify({ target_session_id: targetSessionId })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.message) {
+                const toastType = data.status === 'error' ? 'error' : (data.status === 'success' ? 'success' : 'info');
+                showToast(data.message, toastType);
+            }
+        })
+        .catch(() => {
+            showToast('Eşleşme isteği gönderilirken bir hata oluştu.', 'error');
+        });
+    }
+
+    function submitModalMatchRequest() {
+        if (selectedTargetSessionId) {
+            sendMatchRequestDirect(selectedTargetSessionId, selectedTargetNickname);
+            closeUserActionModal();
+        }
+    }
+
+    function openReportFromUserModal() {
+        closeUserActionModal();
+        openReportModal(selectedMessageId, selectedTargetSessionId, selectedTargetNickname);
+    }
+
+    function openReportModal(messageId, targetSessionId, nickname, messageContent = '') {
+        if (targetSessionId && parseInt(targetSessionId) === currentSessionId) {
+            showToast('Kendi oturumunuzu veya mesajınızı raporlayamazsınız.', 'warning');
+            return;
+        }
+        selectedMessageId = messageId;
+        selectedTargetSessionId = targetSessionId;
+        selectedTargetNickname = nickname;
+
+        document.getElementById('reportTargetName').textContent = nickname || 'Kullanıcı';
+        document.getElementById('reportMessageText').textContent = messageContent ? `"${messageContent}"` : '(Mesaj içeriği)';
+        document.getElementById('reportReasonInput').value = '';
+        document.getElementById('reportModal').classList.add('active');
+        lucide.createIcons();
+    }
+
+    function closeReportModal() {
+        document.getElementById('reportModal').classList.remove('active');
+    }
+
+    function selectReportCategory(el) {
+        document.querySelectorAll('.report-chip').forEach(c => c.classList.remove('selected'));
+        el.classList.add('selected');
+        selectedReportCategory = el.getAttribute('data-reason');
+    }
+
+    function submitReportModal() {
+        const details = document.getElementById('reportReasonInput').value.trim();
+        socket.emit('report_message', {
+            message_id: selectedMessageId,
+            reported_session_id: selectedTargetSessionId,
+            reason_category: selectedReportCategory,
+            reason_details: details
+        });
+        closeReportModal();
+    }
+
+    function respondMatchRequest(accepted) {
+        if (pendingMatchRequestId) {
+            socket.emit('respond_match_request', {
+                request_id: pendingMatchRequestId,
+                accepted: accepted
+            });
+            document.getElementById('matchPopup').classList.remove('active');
+            pendingMatchRequestId = null;
+        }
+    }
+
+    function toggleUsersDrawer() {
+        const drawer = document.getElementById('usersDrawer');
+        const overlay = document.getElementById('drawerOverlay');
+        const isActive = drawer.classList.contains('active');
+        if (isActive) {
+            drawer.classList.remove('active');
+            overlay.style.display = 'none';
+        } else {
+            drawer.classList.add('active');
+            overlay.style.display = 'block';
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
+
+    function verifyGeofenceLocation() {
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition((pos) => {
+                fetch('/api/update-location', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude
+                    })
+                })
+                .then(r => r.json())
+                .then(data => {
+                    if (data.status === 'out_of_range') {
+                        alert('Kafenin 25m etki alanından çıktığınız için sohbetten çıkarıldınız.');
+                        window.location.href = '/';
+                    }
+                })
+                .catch(() => {});
+            }, () => {}, { enableHighAccuracy: true });
+        }
+    }
+
+    window.closeTrustOverlay = function() {
+        if (window.trustOverlayTimer) {
+            clearTimeout(window.trustOverlayTimer);
+            window.trustOverlayTimer = null;
+        }
+        const overlay = document.getElementById('chatTrustOverlay');
+        if (overlay) {
+            overlay.classList.add('fade-out', 'hidden-overlay');
+            overlay.style.opacity = '0';
+            overlay.style.visibility = 'hidden';
+            overlay.style.pointerEvents = 'none';
+            setTimeout(() => {
+                overlay.style.display = 'none';
+                if (overlay.parentNode) {
+                    overlay.parentNode.removeChild(overlay);
+                }
+            }, 400);
+        }
+    };
+
+    window.trustOverlayTimer = setTimeout(() => {
+        if (typeof window.closeTrustOverlay === 'function') {
+            window.closeTrustOverlay();
+        }
+    }, 5000);
+
+    function scrollToBottom() {
+        const container = document.getElementById('chatMessages');
+        if (container) {
+            container.scrollTop = container.scrollHeight;
+        }
+    }
+
+    function applyDynamicColors() {
+        document.querySelectorAll('[data-nick-color]').forEach(el => {
+            const col = el.getAttribute('data-nick-color');
+            if (col) el.style.color = col;
+        });
+        document.querySelectorAll('[data-user-color]').forEach(el => {
+            const col = el.getAttribute('data-user-color');
+            if (col) el.style.color = col;
+        });
+        document.querySelectorAll('[data-user-bg]').forEach(el => {
+            const bg = el.getAttribute('data-user-bg');
+            if (bg) el.style.backgroundColor = bg;
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        applyDynamicColors();
+        const btnClose = document.querySelector('.btn-trust-close');
+        if (btnClose) {
+            btnClose.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                if (typeof window.closeTrustOverlay === 'function') {
+                    window.closeTrustOverlay();
+                }
+            });
+        }
+    });
+
+    window.addEventListener('load', () => {
+        applyDynamicColors();
+        scrollToBottom();
+    });
+
+    verifyGeofenceLocation();
+    setInterval(verifyGeofenceLocation, 120000);
+
+</script>
+{% endblock %}

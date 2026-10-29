@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block title %}İşletme Girişi — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+<style></style>
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-brand">
+        <img src="{{ url_for('static', filename='img/logo.png') }}" alt="Talknon Logo" class="auth-brand-img">
+        <div class="auth-logo">Talknon</div>
+        <div class="business-badge mt-xs">
+            <i data-lucide="shield-check" style="width: 14px; height: 14px;"></i>
+            İşletme Yönetici Portalı
+        </div>
+    </div>
+
+    <div class="auth-card">
+        <h2>{{ t('İşletme Giriş Portalı') }}</h2>
+        <p class="text-muted text-center mb-lg" style="font-size: 0.8rem;">
+            Kafenizin canlı sohbetini ve istatistiklerini yönetmek için işletme kodu ve şifrenizle giriş yapın.
+        </p>
+
+        <form method="POST" action="{{ url_for('auth.business_login') }}" id="businessLoginForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label" for="business_code">İşletme Kodu *</label>
+                <input type="text" name="business_code" id="business_code" class="form-input"
+                       value=""
+                       placeholder="TLK-XXXXXX"
+                       style="font-family: var(--font-mono); font-weight: 700; color: var(--primary-light); text-transform: uppercase;"
+                       required autofocus>
+            </div>
+
+            <div class="form-group">
+                <label class="form-label" for="password">İşletme Şifresi *</label>
+                <div class="password-input-group">
+                    <input type="password" name="password" id="password"
+                           class="form-input"
+                           placeholder="Şifrenizi girin"
+                           required>
+                    <button type="button" class="password-toggle-btn" data-target="password" aria-label="Şifreyi Göster/Gizle" title="Şifreyi Göster/Gizle" tabindex="-1">
+                        <i data-lucide="eye"></i>
+                    </button>
+                </div>
+            </div>
+
+            <button type="submit" class="btn btn-success btn-block btn-lg" id="businessLoginBtn" style="box-shadow: 0 8px 25px rgba(0, 230, 118, 0.35);">
+                <i data-lucide="log-in" style="width: 18px; height: 18px;"></i> İşletme Paneline Giriş Yap
+            </button>
+        </form>
+    </div>
+
+    <p class="auth-footer">
+        Talknon Business &copy; 2026
+    </p>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+lucide.createIcons();
+</script>
+{% endblock %}

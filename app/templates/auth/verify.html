@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% block title %}Dogrulama — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="auth-page">
+    <div class="auth-logo">
+        <span class="text-gradient">Talknon</span>
+    </div>
+
+    <div class="auth-card">
+        <h2>SMS Dogrulama</h2>
+        <p class="text-secondary text-center" style="font-size: 0.85rem; margin-bottom: var(--space-lg);">
+            {{ phone }} numarasina gonderilen 6 haneli kodu girin.
+        </p>
+
+        <form method="POST" action="{{ url_for('auth.verify') }}" id="verifyForm">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+            <div class="form-group">
+                <label class="form-label" for="code">Dogrulama Kodu</label>
+                <input type="text" name="code" id="code"
+                       class="form-input" style="text-align: center; font-size: 1.5rem; letter-spacing: 8px;"
+                       placeholder="------"
+                       pattern="[0-9]*" inputmode="numeric"
+                       maxlength="6" required autofocus>
+            </div>
+
+            <button type="submit" class="btn btn-primary btn-block btn-lg" id="verifyBtn">
+                Dogrula
+            </button>
+        </form>
+    </div>
+</div>
+{% endblock %}

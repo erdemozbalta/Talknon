@@ -1,0 +1,223 @@
+{% extends "base.html" %}
+{% block title %}{{ t('İşletme Paneli') }} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/admin.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="page-content">
+    <div class="top-bar" style="position: relative;">
+        <h1 class="top-bar-title text-gradient" style="margin: 0; text-align: center;">{{ cafe.name }}</h1>
+    </div>
+
+    <div class="admin-grid" style="margin-top: var(--space-lg);">
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--success);">{{ active_count }}</div>
+            <div class="stat-label">{{ t('Şu An Aktif') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--accent);">{{ stats.total_messages }}</div>
+            <div class="stat-label">{{ t('Toplam Mesaj') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--info);">{{ stats.total_sessions }}</div>
+            <div class="stat-label">{{ t('Toplam Oturum') }}</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value" style="color: var(--warning);">{{ stats.total_matches }}</div>
+            <div class="stat-label">{{ t('Eşleşme') }}</div>
+        </div>
+    </div>
+
+    {% if pending_reports > 0 %}
+    <a href="{{ url_for('business.reports') }}" class="card" style="background: var(--danger-light); border-color: var(--danger); margin-bottom: var(--space-lg); display: block; text-decoration: none; color: inherit;">
+        <div style="display: flex; align-items: center; gap: var(--space-sm);">
+            <i data-lucide="alert-triangle" style="width: 24px; height: 24px; color: var(--danger);"></i>
+            <div>
+                <strong style="color: var(--danger);">{{ pending_reports }} {{ t('Bekleyen Rapor') }}</strong>
+                <p class="text-muted" style="font-size: 0.8rem;">{{ t('İncelemenizi bekleyen raporlar var.') }}</p>
+            </div>
+        </div>
+    </a>
+    {% endif %}
+
+    <div class="admin-section">
+        <div class="admin-section-title">{{ t('İşletme QR Kodu Yönetimi') }}</div>
+
+        <div class="card" style="margin-bottom: var(--space-md);">
+            <div style="display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-sm);">
+                <div style="font-size: 0.8rem; font-weight: 700; color: var(--success); text-transform: uppercase; letter-spacing: 0.5px;">
+                    <i data-lucide="check-circle" style="width: 14px; height: 14px; vertical-align: middle;"></i>
+                    {{ t('Mevcut Yayınlanan QR Kodu') }}
+                </div>
+                {% if cafe.qr_code_path %}
+                <img src="{{ url_for('static', filename=cafe.qr_code_path) }}" alt="Kafe QR Kodu" style="width: 160px; height: 160px; border-radius: var(--radius-md); border: 2px solid var(--border-color); background: #fff; padding: 6px;">
+                {% endif %}
+                <div style="font-size: 0.85rem; color: var(--text-secondary);">
+                    {{ t('Mevcut QR Bağlantısı / Kodu') }}: <strong style="color: var(--primary-light); font-family: var(--font-mono);">{{ cafe.qr_unique_slug }}</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="card">
+            <div style="display: flex; flex-direction: column; gap: var(--space-md);">
+                <div style="font-size: 0.85rem; font-weight: 600; color: var(--text-primary);">
+                    {{ t('Yeni QR Kod Kelimesi Belirle veya Üret') }}
+                </div>
+
+                <div style="font-size: 0.75rem; color: var(--warning); background: rgba(255, 171, 0, 0.1); border: 1px solid var(--warning); padding: 8px 12px; border-radius: 10px; display: flex; align-items: center; gap: 6px;">
+                    <i data-lucide="clock" style="width: 16px; height: 16px; flex-shrink: 0;"></i>
+                    <span>{{ t('Önizlemede sınırsız kod üretebilirsiniz. Kaydetme işlemi 5 dakikada 1 kez yapılabilir.') }}</span>
+                </div>
+
+                <form method="POST" action="{{ url_for('business.update_qr') }}" style="width: 100%;">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <div class="form-group" style="margin-bottom: 0;">
+                        <label class="form-label" for="qr_slug" style="text-align: left;">{{ t('Yeni QR Kod Kelimesi (Slug)') }}</label>
+
+                        <input type="text" name="qr_slug" id="qr_slug" class="form-input" value="{{ cafe.qr_unique_slug }}" placeholder="Örn: starbucks-kadikoy-2a318cf858c4" required readonly style="width: 100%; font-family: var(--font-mono); font-size: 0.95rem; padding: 12px; margin-bottom: 12px; background: rgba(255, 255, 255, 0.04); cursor: not-allowed;">
+
+                        <div style="display: flex; gap: var(--space-sm);">
+                            <button type="button" class="btn btn-outline btn-sm" onclick="generateRandomDraftSlug()" style="flex: 1; padding: 10px;">
+                                <i data-lucide="sparkles" style="width: 14px; height: 14px;"></i>
+                                {{ t('Rastgele Kod Üret') }}
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-sm" style="flex: 1; padding: 10px;">
+                                <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                                {{ t('Güncelle & Kaydet') }}
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="admin-section" style="margin-top: var(--space-lg);">
+        <div class="admin-section-title">{{ t('Mesaj Temizleme & Saklama Ayarı') }}</div>
+        <div class="card">
+            <form method="POST" action="{{ url_for('business.update_cleanup_settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 12px;">
+                    {{ t('Sohbet odasındaki mesajların ne zaman otomatik temizleneceğini seçebilirsiniz:') }}
+                </div>
+
+                <div class="form-group" style="margin-bottom: 16px;">
+                    <select name="cleanup_period" id="cleanup_period" class="form-input" style="font-size: 0.9rem; padding: 10px;">
+                        <option value="never" {% if cafe.message_cleanup_period == 'never' %}selected{% endif %}>
+                            {{ t('Hiçbir Zaman Silme (Tüm mesajları sakla)') }}
+                        </option>
+                        <option value="daily" {% if cafe.message_cleanup_period == 'daily' %}selected{% endif %}>
+                            {{ t('Günlük Temizle (24 saatten eski mesajları sil)') }}
+                        </option>
+                        <option value="weekly" {% if cafe.message_cleanup_period == 'weekly' %}selected{% endif %}>
+                            {{ t('Haftalık Temizle (7 günden eski mesajları sil)') }}
+                        </option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-sm" style="border-radius: 12px; padding: 10px;">
+                    <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                    {{ t('Temizleme Ayarını Kaydet') }}
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="admin-section" style="margin-top: var(--space-lg);">
+        <div class="admin-section-title">{{ t('Akıllı Spam & Hızlı Mesaj Koruması') }}</div>
+        <div class="card">
+            <p class="text-muted" style="font-size: 0.8rem; margin-bottom: 16px;">
+                {{ t('Anonim sohbet odasında çok hızlı seri mesaj atan veya bot gibi spam yapan kullanıcıları otomatik olarak kısıtlama kurallarını ayarlayın.') }}
+            </p>
+
+            <form method="POST" action="{{ url_for('business.update_spam_config') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-color); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px;">
+                    <div style="display: flex; align-items: center; gap: 12px;">
+                        <div style="width: 38px; height: 38px; border-radius: 12px; background: rgba(99, 102, 241, 0.15); display: flex; align-items: center; justify-content: center; color: var(--primary-light); flex-shrink: 0;">
+                            <i data-lucide="shield-check" style="width: 20px; height: 20px;"></i>
+                        </div>
+                        <div>
+                            <strong style="font-size: 0.9rem; color: var(--text-primary); display: block;">{{ t('Otomatik Spam Koruması') }}</strong>
+                            <span class="text-muted" style="font-size: 0.75rem;">{{ t('Hızlı seri mesajlar ve tekrarlayan metinler engellensin.') }}</span>
+                        </div>
+                    </div>
+                    <label class="switch-toggle" title="{{ t('Spam Koruması Durumu') }}">
+                        <input type="checkbox" name="enabled" id="spamEnabledToggle" {% if spam_settings.enabled %}checked{% endif %}>
+                        <span class="slider"></span>
+                    </label>
+                </div>
+
+                <style></style>
+
+                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; align-items: start;">
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="form-label text-center" style="font-size: 0.75rem; font-weight: 600; min-height: 36px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">{{ t('Hız Eşiği / Aralık') }}<br>({{ t('Milisaniye') }})</label>
+                        <div class="stepper-box">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_max_interval_ms', -50, 1, 60000)">-</button>
+                            <input type="number" id="input_max_interval_ms" name="max_interval_ms" class="clean-stepper-input" value="{{ spam_settings.max_interval_ms }}" min="1" max="60000" step="1" required placeholder="500">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_max_interval_ms', 50, 1, 60000)">+</button>
+                        </div>
+                        <span style="font-size: 0.68rem; color: var(--text-muted); text-align: center; margin-top: 4px;">Örn: 500 ms (0.5 sn)</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="form-label text-center" style="font-size: 0.75rem; font-weight: 600; min-height: 36px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">{{ t('Seri Mesaj Limiti') }}<br>({{ t('Adet') }})</label>
+                        <div class="stepper-box">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_max_count', -1, 1, 100)">-</button>
+                            <input type="number" id="input_max_count" name="max_count" class="clean-stepper-input" value="{{ spam_settings.max_count }}" min="1" max="100" step="1" required placeholder="5">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_max_count', 1, 1, 100)">+</button>
+                        </div>
+                        <span style="font-size: 0.68rem; color: var(--text-muted); text-align: center; margin-top: 4px;">Örn: 5. mesajdan sonra kısıtlar</span>
+                    </div>
+                    <div style="display: flex; flex-direction: column;">
+                        <label class="form-label text-center" style="font-size: 0.75rem; font-weight: 600; min-height: 36px; display: flex; align-items: center; justify-content: center; margin-bottom: 6px;">{{ t('Susturma Süresi') }}<br>({{ t('Saniye') }})</label>
+                        <div class="stepper-box">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_mute_duration', -1, 1, 86400)">-</button>
+                            <input type="number" id="input_mute_duration" name="mute_duration" class="clean-stepper-input" value="{{ spam_settings.mute_duration }}" min="1" max="86400" step="1" required placeholder="30">
+                            <button type="button" class="stepper-btn" onclick="stepInput('input_mute_duration', 1, 1, 86400)">+</button>
+                        </div>
+                        <span style="font-size: 0.68rem; color: var(--text-muted); text-align: center; margin-top: 4px;">Örn: 30 saniye engel</span>
+                    </div>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-block btn-sm" style="border-radius: 12px; padding: 10px;">
+                    <i data-lucide="save" style="width: 14px; height: 14px;"></i>
+                    {{ t('Spam Ayarlarını Kaydet') }}
+                </button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+
+    function stepInput(id, delta, minVal, maxVal) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        let val = parseInt(el.value, 10) || 0;
+        val += delta;
+        if (minVal !== undefined && val < minVal) val = minVal;
+        if (maxVal !== undefined && val > maxVal) val = maxVal;
+        el.value = val;
+    }
+
+    const cafeNameSlug = "{{ cafe.name }}".trim().toLowerCase()
+        .replace(/ğ/g, 'g').replace(/ü/g, 'u').replace(/ş/g, 's').replace(/ı/g, 'i').replace(/ö/g, 'o').replace(/ç/g, 'c')
+        .replace(/[^a-z0-9]/g, '-').replace(/-+/g, '-').replace(/^-|-$/g, '') || 'cafe';
+
+    function generateRandomDraftSlug() {
+        const array = new Uint8Array(6);
+        crypto.getRandomValues(array);
+        const hex = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+        const newDraftSlug = cafeNameSlug + '-' + hex;
+        document.getElementById('qr_slug').value = newDraftSlug;
+    }
+
+</script>
+{% endblock %}

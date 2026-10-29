@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+{% block title %}{% if other_user %}{{ other_user.display_name }}{% else %}{{ t('Özel Mesaj') }}{% endif %} — Talknon{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/chat.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/profile.css') }}">
+{% endblock %}
+{% block navbar %}{% endblock %}
+
+{% block content %}
+<div class="chat-container">
+
+    <div class="chat-header">
+        <div class="chat-header-info" onclick="openUserProfileModal()" style="cursor: pointer;" title="{{ t('Kullanıcı Detaylı Profilini Gör') }}">
+            <a href="{{ url_for('dm.dm_list') }}" onclick="event.stopPropagation();" class="top-bar-action" style="width: 36px; height: 36px;" id="dmBackBtn">
+                <i data-lucide="arrow-left" style="width: 18px; height: 18px;"></i>
+            </a>
+            <div class="dm-avatar-ring" style="width: 40px; height: 40px; flex-shrink: 0;">
+                <div class="dm-avatar-inner">
+                    {% if other_user and other_user.profile_photo %}
+                    <img src="{{ url_for('static', filename=other_user.profile_photo) }}" alt="Avatar">
+                    {% else %}
+                    {{ (other_user.display_name if other_user else t('Kullanıcı'))[0]|upper }}
+                    {% endif %}
+                </div>
+            </div>
+            <div>
+                <div class="chat-header-title" style="display: flex; align-items: center; gap: 6px;">
+                    <span>
+                        {% if other_user %}
+                        {{ other_user.display_name }}
+                        {% else %}
+                        {{ t('Kullanıcı') }}
+                        {% endif %}
+                    </span>
+                    <i data-lucide="info" style="width: 14px; height: 14px; color: var(--primary-light);"></i>
+                </div>
+            </div>
+        </div>
+        {% if other_user %}
+        <form method="POST" action="{{ url_for('user.block_user', user_id=other_user.id) }}" style="margin: 0;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button class="top-bar-action" style="width: 36px; height: 36px;" title="Engelle" id="blockUserBtn">
+                <i data-lucide="ban" style="width: 16px; height: 16px;"></i>
+            </button>
+        </form>
+        {% endif %}
+    </div>
+
+    <div class="dm-messages" id="dmMessages">
+        {% for msg in messages %}
+        <div class="message {% if msg.sender_id == current_user.id %}message-own{% endif %}" data-id="{{ msg.id }}">
+            <div class="message-bubble">
+                <div class="message-content">{{ msg.content }}</div>
+                <div class="message-time">
+                    {{ msg.created_at.strftime('%H:%M') }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="chat-input-container">
+        <div class="chat-input-wrapper">
+            <input type="text" class="chat-input" id="dmInput"
+                   placeholder="{{ t('Mesajınızı yazın...') }}" maxlength="1000"
+                   autocomplete="off">
+            <button class="chat-send-btn" id="dmSendBtn" onclick="sendDM()">
+                <i data-lucide="send" style="width: 18px; height: 18px;"></i>
+            </button>
+        </div>
+    </div>
+</div>
+
+<div class="action-modal-overlay" id="userProfileModal">
+    <div class="action-modal-card" style="text-align: center; padding: 24px 20px; position: relative;">
+        <button type="button" class="btn btn-ghost btn-sm" onclick="closeUserProfileModal()" style="position: absolute; top: 14px; right: 14px; padding: 4px 8px; border-radius: 50%;">
+            <i data-lucide="x" style="width: 20px; height: 20px;"></i>
+        </button>
+
+        <div style="display: flex; justify-content: center; margin-top: 10px; margin-bottom: 14px;">
+            <div style="width: 100px; height: 100px; border-radius: 50%; padding: 4px; background: linear-gradient(135deg, var(--primary), var(--accent)); box-shadow: 0 8px 25px rgba(108, 99, 255, 0.4); cursor: pointer;" onclick="togglePhotoZoom()">
+                <div style="width: 100%; height: 100%; border-radius: 50%; overflow: hidden; background: #16192b; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; font-weight: 800; color: #ffffff;">
+                    {% if other_user and other_user.profile_photo %}
+                    <img id="modalProfileImg" src="{{ url_for('static', filename=other_user.profile_photo) }}" alt="Profil Fotoğrafı" style="width: 100%; height: 100%; object-fit: cover;">
+                    {% else %}
+                    {{ (other_user.display_name if other_user else t('Kullanıcı'))[0]|upper }}
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% if other_user and other_user.profile_photo %}
+        <div style="font-size: 0.72rem; color: var(--primary-light); margin-top: -6px; margin-bottom: 12px; cursor: pointer;" onclick="togglePhotoZoom()">
+            <i data-lucide="maximize-2" style="width: 12px; height: 12px; vertical-align: middle;"></i> {{ t('Fotoğrafı Büyüt') }}
+        </div>
+        {% endif %}
+
+        <h3 style="margin: 0 0 16px 0; font-size: 1.25rem; font-weight: 800; color: #ffffff;">
+            {% if other_user %}
+            {{ other_user.display_name }}
+            {% else %}
+            {{ t('Kullanıcı') }}
+            {% endif %}
+        </h3>
+
+        {% if other_user and other_user.bio %}
+        <div style="margin-bottom: 18px; text-align: left;">
+            <div style="font-size: 0.75rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; text-align: center;">{{ t('Hakkımda') }}</div>
+            <div style="background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 14px; padding: 12px 16px; font-size: 0.88rem; color: var(--text-secondary); line-height: 1.45; word-break: break-word; text-align: center;">
+                {{ other_user.bio }}
+            </div>
+        </div>
+        {% endif %}
+
+        {% if match.cafe %}
+        <div style="display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 0.82rem; color: var(--text-muted); margin-bottom: 20px; background: rgba(255,255,255,0.02); padding: 8px 14px; border-radius: 12px;">
+            <i data-lucide="coffee" style="width: 16px; height: 16px; color: var(--primary-light);"></i>
+            <span>{{ match.cafe.name }} {{ t('Kafesinde Eşleşildi') }}</span>
+        </div>
+        {% endif %}
+
+        <button type="button" class="btn btn-primary btn-block btn-lg" onclick="closeUserProfileModal()" style="border-radius: 16px;">
+            {{ t('Sohbete Dön') }}
+        </button>
+    </div>
+</div>
+
+{% if other_user and other_user.profile_photo %}
+<div id="photoLightbox" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.92); backdrop-filter: blur(20px); z-index: 999999; display: none; align-items: center; justify-content: center; padding: 20px;" onclick="closePhotoZoom()">
+    <button type="button" class="btn btn-ghost btn-sm" onclick="closePhotoZoom()" style="position: absolute; top: 20px; right: 20px; color: #ffffff; background: rgba(255,255,255,0.1); border-radius: 50%; padding: 8px;">
+        <i data-lucide="x" style="width: 24px; height: 24px;"></i>
+    </button>
+    <img src="{{ url_for('static', filename=other_user.profile_photo) }}" alt="Büyük Fotoğraf" style="max-width: 90vw; max-height: 80vh; border-radius: 20px; box-shadow: 0 10px 40px rgba(0,0,0,0.8); object-fit: contain;">
+</div>
+{% endif %}
+
+<div id="dmMetaData" data-match-id="{{ match.id }}" data-current-user-id="{{ current_user.id }}" style="display: none;"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+
+    lucide.createIcons();
+    const dmMeta = document.getElementById('dmMetaData');
+    const matchId = parseInt(dmMeta.getAttribute('data-match-id'));
+    const currentUserId = parseInt(dmMeta.getAttribute('data-current-user-id'));
+    const socket = window.globalSocket || io();
+
+    const seenMsgIds = new Set();
+    document.querySelectorAll('#dmMessages .message[data-id]').forEach(el => {
+        const id = el.getAttribute('data-id');
+        if (id) seenMsgIds.add(parseInt(id));
+    });
+
+    function initDM() {
+        socket.emit('join_dm', { match_id: matchId });
+        socket.emit('read_dm', { match_id: matchId });
+    }
+
+    if (socket.connected) {
+        initDM();
+    }
+    socket.on('connect', initDM);
+
+    socket.on('new_dm', (data) => {
+        if (!data) return;
+        addDM(data);
+        if (data.sender_id !== currentUserId) {
+            socket.emit('read_dm', { match_id: matchId });
+        }
+    });
+
+    socket.on('new_direct_message', (data) => {
+        if (data && data.match_id === matchId) {
+            addDM({
+                id: data.dm_id,
+                sender_id: data.sender_id,
+                content: data.content,
+                time: data.time,
+                timestamp: data.timestamp
+            });
+            socket.emit('read_dm', { match_id: matchId });
+        }
+    });
+
+    function sendDM() {
+        const input = document.getElementById('dmInput');
+        const content = input.value.trim();
+        if (!content) return;
+        socket.emit('send_dm', { match_id: matchId, content: content });
+        input.value = '';
+        input.focus();
+    }
+
+    document.getElementById('dmInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendDM();
+        }
+    });
+
+    function addDM(data) {
+        if (!data || !data.content) return;
+        if (data.id && seenMsgIds.has(data.id)) return;
+        if (data.id) seenMsgIds.add(data.id);
+
+        const container = document.getElementById('dmMessages');
+        if (!container) return;
+        const isOwn = data.sender_id === currentUserId;
+        const time = data.time || (data.timestamp ? new Date(data.timestamp).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '');
+        container.insertAdjacentHTML('beforeend', `
+            <div class="message ${isOwn ? 'message-own' : ''}" ${data.id ? `data-id="${data.id}"` : ''}>
+                <div class="message-bubble">
+                    <div class="message-content">${escapeHtml(data.content)}</div>
+                    <div class="message-time">${time}</div>
+                </div>
+            </div>
+        `);
+        container.scrollTop = container.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    function openUserProfileModal() {
+        const modal = document.getElementById('userProfileModal');
+        if (modal) {
+            modal.classList.add('active');
+            lucide.createIcons();
+        }
+    }
+
+    function closeUserProfileModal() {
+        const modal = document.getElementById('userProfileModal');
+        if (modal) {
+            modal.classList.remove('active');
+        }
+    }
+
+    function togglePhotoZoom() {
+        const lb = document.getElementById('photoLightbox');
+        if (lb) {
+            lb.style.display = 'flex';
+            lucide.createIcons();
+        }
+    }
+
+    function closePhotoZoom() {
+        const lb = document.getElementById('photoLightbox');
+        if (lb) {
+            lb.style.display = 'none';
+        }
+    }
+
+    socket.on('match_removed', function(data) {
+        if (!data) return;
+        const affectedIds = data.match_ids ? data.match_ids.map(Number) : [Number(data.match_id)];
+        if (affectedIds.includes(matchId)) {
+            alert(data.message || 'Bu eşleşme sonlandırıldı.');
+            window.location.href = "{{ url_for('dm.dm_list') }}";
+        }
+    });
+
+    const dmMessages = document.getElementById('dmMessages');
+    dmMessages.scrollTop = dmMessages.scrollHeight;
+
+</script>
+{% endblock %}
